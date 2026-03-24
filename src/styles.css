@@ -1,0 +1,106 @@
+/* ─── Minimal CSS (things Tailwind can't handle) ─────── */
+
+/* kbd styling in shortcuts modal */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  background: #0f1114;
+  border: 1px solid #2a2e38;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: "JetBrains Mono", monospace;
+  color: #d4d4d8;
+  line-height: 1;
+}
+
+/* Grid divider pseudo-element hit area */
+.grid-divider::before {
+  content: "";
+  position: absolute;
+}
+
+.grid-divider.vertical::before {
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  right: -4px;
+}
+
+.grid-divider.horizontal::before {
+  left: 0;
+  right: 0;
+  top: -4px;
+  bottom: -4px;
+}
+
+.grid-divider.active {
+  background: #34d399;
+}
+
+/* Drag states (toggled by JS) */
+.terminal-cell.drag-source {
+  opacity: 0.4;
+}
+
+.terminal-cell.drag-over {
+  box-shadow: inset 0 0 0 2px #34d399;
+}
+
+/* Terminal cell ended state */
+.terminal-cell.ended .terminal-cell-head {
+  border-bottom-color: #7f1d1d40;
+}
+
+/* Drag cursor override */
+body.dragging {
+  user-select: none !important;
+  cursor: inherit;
+}
+
+body.dragging * {
+  cursor: inherit !important;
+}
+
+/* Maximize body child terminal */
+.maximize-body .terminal-cell {
+  flex: 1;
+}
+
+/* ─── xterm Overrides ─────────────────────────────────── */
+
+.xterm {
+  height: 100%;
+  padding: 2px;
+}
+
+.xterm .xterm-viewport {
+  overflow-y: auto !important;
+}
+
+.xterm .xterm-screen {
+  height: 100% !important;
+}
+
+/* ─── Scrollbar ───────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}

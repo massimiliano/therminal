@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self';
+               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
+               font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net;
+               script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com;"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Therminal</title>
+    <link rel="icon" href="../logo.png" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="./tailwind-config.js"></script>
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../node_modules/xterm/css/xterm.css" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+
+  <body
+    class="bg-th-bg text-zinc-200 h-screen flex flex-col overflow-hidden font-sans"
+  >
+    <!-- ── Tab Bar ── -->
+    <nav
+      id="tabBar"
+      class="flex items-center bg-th-surface border-b border-zinc-800/70 h-10 shrink-0 px-1 gap-1"
+    >
+      <button
+        id="homeTab"
+        class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-emerald-400 bg-emerald-400/5 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px]"
+        data-view="home"
+      >
+        <i class="bi bi-house-door"></i>
+        <span>Home</span>
+      </button>
+
+      <div class="flex-1"></div>
+
+      <div id="tabBarTools" class="flex items-center gap-1">
+        <div id="monitorWidget" class="flex items-center gap-0.5 mr-1"></div>
+        <div class="w-px h-4 bg-zinc-800 mx-0.5"></div>
+        <button
+          id="shortcutsToggle"
+          class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
+          title="Scorciatoie e info (Ctrl+/)"
+        >
+          <i class="bi bi-keyboard"></i>
+        </button>
+        <div id="workspaceTools" class="flex items-center gap-1 hidden">
+          <div class="w-px h-4 bg-zinc-800 mx-0.5"></div>
+          <button
+            id="saveSessionBtn"
+            class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
+            title="Salva sessione"
+          >
+            <i class="bi bi-save"></i>
+          </button>
+          <div class="w-px h-4 bg-zinc-800 mx-0.5"></div>
+          <button
+            id="broadcastToggle"
+            class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
+            title="Broadcast a tutti (Ctrl+Shift+B)"
+          >
+            <i class="bi bi-broadcast"></i>
+          </button>
+          <div class="w-px h-4 bg-zinc-800 mx-0.5"></div>
+          <button
+            id="fontMinus"
+            class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
+            title="Riduci font (Ctrl+-)"
+          >
+            <i class="bi bi-dash"></i>
+          </button>
+          <span
+            id="fontSizeLabel"
+            class="text-[10px] text-zinc-500 font-mono w-6 text-center select-none"
+            >13</span
+          >
+          <button
+            id="fontPlus"
+            class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
+            title="Aumenta font (Ctrl+=)"
+          >
+            <i class="bi bi-plus"></i>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ── Home View (Wizard) ── -->
+    <div
+      id="homeView"
+      class="flex-1 flex items-center justify-center p-6 overflow-y-auto overflow-x-hidden"
+    >
+      <!-- Step 1: Client Count -->
+      <div id="step1" class="w-full max-w-5xl flex flex-col justify-center gap-10 min-h-0">
+        <!-- Top: logo + description + count selection -->
+        <div class="text-center">
+          <img src="../logo.png" alt="Therminal" class="w-32 h-32 mx-auto mb-3" />
+          <h1 class="text-2xl font-bold mb-1 text-white tracking-tight">Therminal</h1>
+          <p class="text-zinc-500 text-sm mb-8">Multi-session launcher per CLI AI · Claude · Codex · Gemini · Terminale</p>
+          <div class="flex justify-center gap-3 flex-wrap" id="countOptions"></div>
+        </div>
+
+        <!-- Bottom: sessions (left) + presets (right) -->
+        <div id="savedSection" class="grid grid-cols-2 gap-8 px-4 hidden">
+          <div id="sessionSection" class="hidden">
+            <p class="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-3">
+              <i class="bi bi-collection text-emerald-400 mr-1"></i>
+              Sessioni salvate
+            </p>
+            <div
+              id="sessionList"
+              class="flex flex-col gap-2 max-h-[35vh] overflow-y-auto py-1"
+            ></div>
+          </div>
+
+          <div id="presetSection" class="hidden">
+            <p class="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-3">
+              <i class="bi bi-bookmark text-emerald-400 mr-1"></i>
+              Preset singoli
+            </p>
+            <div
+              id="presetList"
+              class="flex flex-col gap-2 max-h-[35vh] overflow-y-auto py-1"
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Provider Selection -->
+      <div id="step2" class="hidden w-full max-w-5xl min-w-0">
+        <div class="text-center mb-8">
+          <h2 class="text-xl font-bold text-white mb-1">Scegli i provider</h2>
+          <p class="text-zinc-500 text-sm">
+            Assegna un provider a ciascun client
+          </p>
+        </div>
+
+        <div class="flex flex-wrap justify-center gap-3 mb-6" id="quickSelect"></div>
+
+        <div id="bulkFlags" class="mb-5"></div>
+
+        <div
+          id="clientGrid"
+          class="grid gap-3 mb-8 max-h-[50vh] overflow-y-auto overflow-x-hidden pr-1 min-w-0"
+        ></div>
+
+        <div class="max-w-md mx-auto mb-8">
+          <label
+            class="block text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2"
+            >Working Directory</label
+          >
+          <input
+            id="cwdInput"
+            type="text"
+            value="."
+            class="w-full bg-zinc-900 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm font-mono text-zinc-300 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20"
+          />
+        </div>
+
+        <div class="flex justify-between items-center max-w-md mx-auto">
+          <button
+            id="backBtn"
+            class="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm"
+          >
+            <i class="bi bi-arrow-left"></i> Indietro
+          </button>
+          <div class="flex items-center gap-2">
+            <button
+              id="savePresetBtn"
+              class="flex items-center gap-2 border border-zinc-700/50 hover:border-emerald-500/50 text-zinc-400 hover:text-white px-4 py-2.5 rounded-lg text-sm transition-colors"
+            >
+              <i class="bi bi-bookmark-plus"></i> Salva Preset
+            </button>
+            <button
+              id="launchBtn"
+              class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors"
+            >
+              Avvia <i class="bi bi-play-fill"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Workspace Container ── -->
+    <div id="workspaceContainer" class="flex-1 hidden overflow-hidden relative">
+      <div
+        id="broadcastBar"
+        class="absolute bottom-0 left-0 right-0 flex items-center gap-2 px-3 py-1.5 bg-th-surface/95 border-t border-emerald-400/25 backdrop-blur-lg z-10 hidden"
+      >
+        <i class="bi bi-broadcast text-emerald-400"></i>
+        <input
+          id="broadcastInput"
+          type="text"
+          class="flex-1 bg-th-body border border-th-border-lt rounded-md px-3 py-1.5 text-sm font-mono text-th-fg outline-none focus:border-emerald-400/35"
+          placeholder="Invia comando a tutti i terminali... (Invio per inviare)"
+        />
+        <span class="text-[10px] text-zinc-600 select-none"
+          >ESC per chiudere</span
+        >
+      </div>
+    </div>
+
+    <!-- ── Maximize Overlay ── -->
+    <div
+      id="maximizeOverlay"
+      class="fixed inset-0 z-50 bg-th-bg flex flex-col hidden"
+    >
+      <div
+        id="maximizeHead"
+        class="flex items-center px-2 py-1 bg-th-surface border-b border-th-border h-9 shrink-0"
+      >
+        <button
+          id="maximizeCloseBtn"
+          class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
+        >
+          <i class="bi bi-arrows-angle-contract"></i>
+          <span>Ripristina</span>
+        </button>
+      </div>
+      <div id="maximizeBody" class="flex-1 min-h-0 flex flex-col"></div>
+    </div>
+
+    <!-- ── Preset Name Modal ── -->
+    <div
+      id="presetNameModal"
+      class="fixed inset-0 z-[100] flex items-center justify-center hidden"
+    >
+      <div
+        class="shortcuts-backdrop absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onclick="document.getElementById('presetNameModal').classList.add('hidden')"
+      ></div>
+      <div
+        class="relative w-[360px] bg-th-card border border-th-border-lt rounded-xl shadow-[0_24px_64px_rgba(0,0,0,0.38)] p-5"
+      >
+        <h3 class="text-sm font-bold text-th-fg mb-3">Salva Preset</h3>
+        <input
+          id="presetNameInput"
+          type="text"
+          placeholder="Nome del preset..."
+          class="w-full bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-sm font-sans text-th-fg outline-none mb-3.5 box-border focus:border-emerald-400/35"
+        />
+        <div class="flex justify-end gap-2">
+          <button
+            id="presetNameCancel"
+            class="px-4 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all duration-150 bg-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
+          >
+            Annulla
+          </button>
+          <button
+            id="presetNameConfirm"
+            class="px-4 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all duration-150 bg-emerald-400/10 border border-emerald-400/30 text-emerald-400 hover:bg-emerald-400/20 hover:border-emerald-400"
+          >
+            Salva
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Shortcuts / Info Modal ── -->
+    <div
+      id="shortcutsModal"
+      class="fixed inset-0 z-[100] flex items-center justify-center hidden"
+    >
+      <div
+        class="shortcuts-backdrop absolute inset-0 bg-black/50 backdrop-blur-sm"
+      ></div>
+      <div
+        class="relative w-[520px] max-h-[80vh] bg-th-card border border-th-border-lt rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.38)] flex flex-col overflow-hidden"
+      >
+        <div
+          class="flex items-center justify-between px-5 py-4 border-b border-th-border shrink-0"
+        >
+          <h2 class="text-base font-bold text-th-fg tracking-tight">
+            Therminal
+          </h2>
+          <button
+            id="shortcutsCloseBtn"
+            class="w-7 h-7 flex items-center justify-center bg-transparent text-zinc-600 cursor-pointer rounded-md text-sm transition-all duration-150 hover:text-zinc-300 hover:bg-zinc-800"
+          >
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="px-5 py-4 overflow-y-auto">
+          <!-- App Info -->
+          <section class="mb-4">
+            <p class="text-sm text-zinc-400 leading-relaxed mb-2.5">
+              Launcher multi-sessione per CLI AI (Claude, Codex, Gemini, Terminale) su
+              Windows. Basato su Electron, xterm.js e node-pty.
+            </p>
+            <div class="flex gap-4 flex-wrap">
+              <span
+                class="text-[11px] text-zinc-600 flex items-center gap-[5px]"
+                ><i class="bi bi-tag text-emerald-400 text-xs"></i>
+                v0.5.0</span
+              >
+              <span
+                class="text-[11px] text-zinc-600 flex items-center gap-[5px]"
+                ><i class="bi bi-cpu text-emerald-400 text-xs"></i> Electron +
+                xterm.js</span
+              >
+              <span
+                class="text-[11px] text-zinc-600 flex items-center gap-[5px]"
+                ><i class="bi bi-windows text-emerald-400 text-xs"></i> Windows
+                10/11</span
+              >
+            </div>
+          </section>
+
+          <div class="h-px bg-th-border my-3"></div>
+
+          <section class="mb-4">
+            <h3
+              class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-2"
+            >
+              Scorciatoie
+            </h3>
+            <div class="flex items-center justify-between py-[5px]">
+              <span class="text-sm text-zinc-400"
+                >Apri scorciatoie / info</span
+              >
+              <div class="flex items-center gap-1 text-[11px] text-zinc-500">
+                <kbd>Ctrl</kbd><span class="text-zinc-700">+</span
+                ><kbd>/</kbd>
+              </div>
+            </div>
+            <div class="flex items-center justify-between py-[5px]">
+              <span class="text-sm text-zinc-400"
+                >Broadcast a tutti i terminali</span
+              >
+              <div class="flex items-center gap-1 text-[11px] text-zinc-500">
+                <kbd>Ctrl</kbd><span class="text-zinc-700">+</span
+                ><kbd>Shift</kbd><span class="text-zinc-700">+</span
+                ><kbd>B</kbd>
+              </div>
+            </div>
+          </section>
+
+          <div class="h-px bg-th-border my-3"></div>
+
+          <section class="mb-4">
+            <h3
+              class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-2"
+            >
+              Azioni per terminale
+            </h3>
+            <div class="grid grid-cols-3 gap-2">
+              <div
+                class="flex flex-col items-center gap-1 px-1.5 py-2.5 bg-th-body rounded-lg text-center"
+              >
+                <i class="bi bi-grip-vertical text-base text-zinc-500"></i>
+                <span class="text-[10px] text-zinc-600 leading-tight"
+                  >Trascina per riordinare</span
+                >
+              </div>
+              <div
+                class="flex flex-col items-center gap-1 px-1.5 py-2.5 bg-th-body rounded-lg text-center"
+              >
+                <i class="bi bi-search text-base text-zinc-500"></i>
+                <span class="text-[10px] text-zinc-600 leading-tight"
+                  >Cerca nel buffer</span
+                >
+              </div>
+              <div
+                class="flex flex-col items-center gap-1 px-1.5 py-2.5 bg-th-body rounded-lg text-center"
+              >
+                <i class="bi bi-download text-base text-zinc-500"></i>
+                <span class="text-[10px] text-zinc-600 leading-tight"
+                  >Esporta log (.log/.txt)</span
+                >
+              </div>
+              <div
+                class="flex flex-col items-center gap-1 px-1.5 py-2.5 bg-th-body rounded-lg text-center"
+              >
+                <i class="bi bi-arrows-fullscreen text-base text-zinc-500"></i>
+                <span class="text-[10px] text-zinc-600 leading-tight"
+                  >Massimizza</span
+                >
+              </div>
+              <div
+                class="flex flex-col items-center gap-1 px-1.5 py-2.5 bg-th-body rounded-lg text-center"
+              >
+                <i class="bi bi-arrow-clockwise text-base text-zinc-500"></i>
+                <span class="text-[10px] text-zinc-600 leading-tight"
+                  >Riavvia sessione</span
+                >
+              </div>
+              <div
+                class="flex flex-col items-center gap-1 px-1.5 py-2.5 bg-th-body rounded-lg text-center"
+              >
+                <i class="bi bi-x-lg text-base text-zinc-500"></i>
+                <span class="text-[10px] text-zinc-600 leading-tight"
+                  >Chiudi sessione</span
+                >
+              </div>
+            </div>
+          </section>
+
+          <div class="h-px bg-th-border my-3"></div>
+
+          <section class="last:mb-0">
+            <h3
+              class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-2"
+            >
+              Funzionalita
+            </h3>
+            <ul class="list-none p-0 m-0 flex flex-col gap-1.5">
+              <li class="text-xs text-zinc-400 flex items-center gap-2">
+                <i
+                  class="bi bi-link-45deg text-emerald-400 text-sm w-[18px] text-center shrink-0"
+                ></i>
+                Link cliccabili nell'output del terminale
+              </li>
+              <li class="text-xs text-zinc-400 flex items-center gap-2">
+                <i
+                  class="bi bi-bookmark-plus text-emerald-400 text-sm w-[18px] text-center shrink-0"
+                ></i>
+                Salvataggio preset per configurazioni frequenti
+              </li>
+              <li class="text-xs text-zinc-400 flex items-center gap-2">
+                <i
+                  class="bi bi-bell text-emerald-400 text-sm w-[18px] text-center shrink-0"
+                ></i>
+                Notifiche di sistema quando un processo termina in background
+              </li>
+              <li class="text-xs text-zinc-400 flex items-center gap-2">
+                <i
+                  class="bi bi-broadcast text-emerald-400 text-sm w-[18px] text-center shrink-0"
+                ></i>
+                Broadcast comandi a tutti i terminali
+              </li>
+              <li class="text-xs text-zinc-400 flex items-center gap-2">
+                <i
+                  class="bi bi-arrows-move text-emerald-400 text-sm w-[18px] text-center shrink-0"
+                ></i>
+                Drag &amp; drop per riordinare i pannelli
+              </li>
+              <li class="text-xs text-zinc-400 flex items-center gap-2">
+                <i
+                  class="bi bi-arrows-fullscreen text-emerald-400 text-sm w-[18px] text-center shrink-0"
+                ></i>
+                Focus / maximize su singolo terminale
+              </li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <script src="../node_modules/xterm/lib/xterm.js"></script>
+    <script src="../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+    <script
+      src="../node_modules/@xterm/addon-web-links/lib/addon-web-links.js"
+    ></script>
+    <script
+      src="../node_modules/@xterm/addon-search/lib/addon-search.js"
+    ></script>
+    <script type="module" src="./renderer.js"></script>
+  </body>
+</html>
