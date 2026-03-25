@@ -26,7 +26,7 @@ function isPasteShortcut(event) {
 }
 
 function isMultilineShortcut(event) {
-  return event.key === "Enter" && event.ctrlKey && !event.altKey && !event.metaKey;
+  return event.key === "Enter" && event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
 }
 
 // ─── Export Log ─────────────────────────────────────────
