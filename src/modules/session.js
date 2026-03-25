@@ -25,6 +25,10 @@ function isPasteShortcut(event) {
   );
 }
 
+function isMultilineShortcut(event) {
+  return event.key === "Enter" && event.ctrlKey && !event.altKey && !event.metaKey;
+}
+
 // ─── Export Log ─────────────────────────────────────────
 
 export function exportLog(sessionId) {
@@ -249,19 +253,29 @@ export async function createWorkspaceSession(workspace, client, row, insertBefor
   terminal.focus();
 
   terminal.attachCustomKeyEventHandler((event) => {
-    if (event.type !== "keydown" || !isPasteShortcut(event)) {
+    if (event.type !== "keydown") {
       return true;
     }
 
-    event.preventDefault();
-    window.launcherAPI.readClipboardText().then((text) => {
-      if (text) {
-        window.launcherAPI.writeSession(session.id, text);
-      }
-    }).catch((error) => {
-      console.error("Clipboard paste failed:", error);
-    });
-    return false;
+    if (isMultilineShortcut(event)) {
+      event.preventDefault();
+      window.launcherAPI.writeSession(session.id, "\n");
+      return false;
+    }
+
+    if (isPasteShortcut(event)) {
+      event.preventDefault();
+      window.launcherAPI.readClipboardText().then((text) => {
+        if (text) {
+          window.launcherAPI.writeSession(session.id, text);
+        }
+      }).catch((error) => {
+        console.error("Clipboard paste failed:", error);
+      });
+      return false;
+    }
+
+    return true;
   });
 
   const inputDisposable = terminal.onData((value) => {
