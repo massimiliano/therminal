@@ -16,6 +16,15 @@ import { shortId, queueFit } from "./helpers.js";
 import { showSearch } from "./search.js";
 import { toggleMaximize, restoreMaximized } from "./maximize.js";
 
+function isPasteShortcut(event) {
+  const key = String(event.key || "").toLowerCase();
+  return (
+    ((event.ctrlKey || event.metaKey) && key === "v") ||
+    ((event.ctrlKey || event.metaKey) && event.shiftKey && key === "v") ||
+    (event.shiftKey && key === "insert")
+  );
+}
+
 // ─── Export Log ─────────────────────────────────────────
 
 export function exportLog(sessionId) {
@@ -237,9 +246,49 @@ export async function createWorkspaceSession(workspace, client, row, insertBefor
   terminal.open(body);
   fitAddon.fit();
   window.launcherAPI.resizeSession(session.id, terminal.cols, terminal.rows);
+  terminal.focus();
+
+  terminal.attachCustomKeyEventHandler((event) => {
+    if (event.type !== "keydown" || !isPasteShortcut(event)) {
+      return true;
+    }
+
+    event.preventDefault();
+    window.launcherAPI.readClipboardText().then((text) => {
+      if (text) {
+        window.launcherAPI.writeSession(session.id, text);
+      }
+    }).catch((error) => {
+      console.error("Clipboard paste failed:", error);
+    });
+    return false;
+  });
 
   const inputDisposable = terminal.onData((value) => {
     window.launcherAPI.writeSession(session.id, value);
+  });
+
+  body.addEventListener("paste", (event) => {
+    const text = event.clipboardData?.getData("text/plain");
+    if (!text) return;
+    event.preventDefault();
+    window.launcherAPI.writeSession(session.id, text);
+  });
+
+  body.addEventListener("contextmenu", (event) => {
+    const selectedText = terminal.getSelection();
+    if (!selectedText) {
+      return;
+    }
+
+    event.preventDefault();
+    window.launcherAPI.writeClipboardText(selectedText).catch((error) => {
+      console.error("Clipboard copy failed:", error);
+    });
+  });
+
+  body.addEventListener("mousedown", () => {
+    terminal.focus();
   });
 
   const resizeObserver = new ResizeObserver(() => queueFit(session.id));

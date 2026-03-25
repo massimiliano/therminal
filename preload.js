@@ -29,9 +29,15 @@ contextBridge.exposeInMainWorld("launcherAPI", {
 
   // System
   getSystemMetrics: () => ipcRenderer.invoke("system:metrics"),
+  getUsageSummary: () => ipcRenderer.invoke("usage:summary"),
+  getUsagePanelSummary: (payload = {}) => ipcRenderer.invoke("usage:panel", payload),
+  getUsagePanelProvider: (payload = {}) => ipcRenderer.invoke("usage:panel-provider", payload),
+  getServiceStatuses: (force = false) => ipcRenderer.invoke("services:status", { force }),
 
   // Shell & dialog
   openExternal: (url) => ipcRenderer.invoke("shell:open-external", url),
+  readClipboardText: () => ipcRenderer.invoke("clipboard:read-text"),
+  writeClipboardText: (text) => ipcRenderer.invoke("clipboard:write-text", text),
   saveLogFile: (defaultFilename, content) =>
     ipcRenderer.invoke("dialog:save-file", { defaultFilename, content }),
 });

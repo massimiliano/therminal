@@ -7,30 +7,24 @@ import { showStep } from "./wizard.js";
 import { restoreMaximized } from "./maximize.js";
 import { buildClientCommand, extractInlineArgs, normalizeInlineArgs } from "./cli-options.js";
 
-export async function launchWorkspace() {
-  const cwd = dom.cwdInput.value.trim() || ".";
-  state.wizardInlineArgs = normalizeInlineArgs(state.wizardInlineArgs, state.wizardClientCount);
+async function createWorkspaceFromClients({ name, clients, meta = {} }) {
   state.workspaceCounter++;
   const wsId = `ws-${state.workspaceCounter}`;
-  const wsName = `Workspace ${state.workspaceCounter}`;
+  const wsName = name || `Workspace ${state.workspaceCounter}`;
+  const clientCount = clients.length;
 
   const [gridCols, gridRows] =
-    GRID_LAYOUTS[state.wizardClientCount] || [
-      Math.ceil(Math.sqrt(state.wizardClientCount)),
-      Math.ceil(
-        state.wizardClientCount / Math.ceil(Math.sqrt(state.wizardClientCount))
-      ),
+    GRID_LAYOUTS[clientCount] || [
+      Math.ceil(Math.sqrt(clientCount)),
+      Math.ceil(clientCount / Math.ceil(Math.sqrt(clientCount))),
     ];
 
-  const clients = state.wizardProviders.map((provider, i) => ({
-    index: i,
-    provider,
-    inlineArgs: state.wizardInlineArgs[i] || "",
-    command: buildClientCommand(provider, state.wizardInlineArgs[i] || ""),
-    cwd,
+  const positionedClients = clients.map((client, index) => ({
+    ...client,
+    index,
     sessionId: null,
-    gridCol: i % gridCols,
-    gridRow: Math.floor(i / gridCols),
+    gridCol: index % gridCols,
+    gridRow: Math.floor(index / gridCols),
   }));
 
   const rowSizes = new Array(gridRows).fill(1);
@@ -44,6 +38,19 @@ export async function launchWorkspace() {
   grid.dataset.workspaceId = wsId;
 
   const rowElements = [];
+
+  const workspace = {
+    id: wsId,
+    name: wsName,
+    clients: positionedClients,
+    element: grid,
+    gridCols,
+    gridRows,
+    rowSizes,
+    colSizes,
+    rows: rowElements,
+    meta,
+  };
 
   for (let r = 0; r < gridRows; r++) {
     const row = document.createElement("div");
@@ -65,45 +72,48 @@ export async function launchWorkspace() {
   }
 
   dom.workspaceContainer.append(grid);
-
-  const workspace = {
-    id: wsId,
-    name: wsName,
-    clients,
-    element: grid,
-    gridCols,
-    gridRows,
-    rowSizes,
-    colSizes,
-    rows: rowElements,
-  };
   workspaces.set(wsId, workspace);
-
   switchView(wsId);
+
+  for (let r = 0; r < gridRows; r++) {
+    for (let c = 0; c < gridCols; c++) {
+      const clientIndex = r * gridCols + c;
+      if (clientIndex >= positionedClients.length) break;
+
+      if (c > 0) {
+        const vDiv = document.createElement("div");
+        vDiv.className =
+          "grid-divider vertical bg-th-border relative z-[2] transition-[background] duration-150 hover:bg-emerald-400 cursor-col-resize w-1 shrink-0";
+        const capturedR = r;
+        const capturedGap = c - 1;
+        vDiv.addEventListener("mousedown", (e) =>
+          handleVerticalDrag(e, workspace, capturedR, capturedGap)
+        );
+        rowElements[r].append(vDiv);
+      }
+
+      await createWorkspaceSession(workspace, positionedClients[clientIndex], rowElements[r]);
+    }
+  }
+
+  renderTabs();
+  return workspace;
+}
+
+export async function launchWorkspace() {
+  const cwd = dom.cwdInput.value.trim() || ".";
+  state.wizardInlineArgs = normalizeInlineArgs(state.wizardInlineArgs, state.wizardClientCount);
+  const clients = state.wizardProviders.map((provider, i) => ({
+    provider,
+    inlineArgs: state.wizardInlineArgs[i] || "",
+    command: buildClientCommand(provider, state.wizardInlineArgs[i] || ""),
+    cwd,
+  }));
   showStep(1);
 
   dom.launchBtn.disabled = true;
   try {
-    for (let r = 0; r < gridRows; r++) {
-      for (let c = 0; c < gridCols; c++) {
-        const clientIndex = r * gridCols + c;
-        if (clientIndex >= clients.length) break;
-
-        if (c > 0) {
-          const vDiv = document.createElement("div");
-          vDiv.className =
-            "grid-divider vertical bg-th-border relative z-[2] transition-[background] duration-150 hover:bg-emerald-400 cursor-col-resize w-1 shrink-0";
-          const capturedR = r;
-          const capturedGap = c - 1;
-          vDiv.addEventListener("mousedown", (e) =>
-            handleVerticalDrag(e, workspace, capturedR, capturedGap)
-          );
-          rowElements[r].append(vDiv);
-        }
-
-        await createWorkspaceSession(workspace, clients[clientIndex], rowElements[r]);
-      }
-    }
+    return await createWorkspaceFromClients({ clients });
   } catch (error) {
     console.error("Launch error:", error);
   } finally {
@@ -112,23 +122,23 @@ export async function launchWorkspace() {
 }
 
 export async function launchWorkspaceFromConfig({ name, providers, cwd, inlineArgs, commands }) {
-  state.wizardClientCount = providers.length;
-  state.wizardProviders = providers.slice();
-  if (Array.isArray(inlineArgs)) {
-    state.wizardInlineArgs = normalizeInlineArgs(inlineArgs, providers.length);
-  } else if (Array.isArray(commands)) {
-    state.wizardInlineArgs = normalizeInlineArgs(
-      commands.map((command, idx) => extractInlineArgs(providers[idx], command)),
-      providers.length
-    );
-  } else {
-    state.wizardInlineArgs = new Array(providers.length).fill("");
-  }
-  dom.cwdInput.value = cwd || ".";
-  await launchWorkspace();
-  // Rename to saved name
-  const ws = workspaces.get(`ws-${state.workspaceCounter}`);
-  if (ws && name) ws.name = name;
+  const normalizedInlineArgs = Array.isArray(inlineArgs)
+    ? normalizeInlineArgs(inlineArgs, providers.length)
+    : Array.isArray(commands)
+      ? normalizeInlineArgs(
+          commands.map((command, idx) => extractInlineArgs(providers[idx], command)),
+          providers.length
+        )
+      : new Array(providers.length).fill("");
+
+  const clients = providers.map((provider, index) => ({
+    provider,
+    inlineArgs: normalizedInlineArgs[index] || "",
+    command: buildClientCommand(provider, normalizedInlineArgs[index] || ""),
+    cwd: cwd || ".",
+  }));
+
+  return await createWorkspaceFromClients({ name, clients });
 }
 
 export function closeWorkspace(wsId) {

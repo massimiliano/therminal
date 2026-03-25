@@ -8,6 +8,7 @@ import {
 
 export function showStep(step) {
   state.wizardStep = step;
+  dom.homeOverview.classList.toggle("hidden", step !== 1);
   dom.step1El.classList.toggle("hidden", step !== 1);
   dom.step2El.classList.toggle("hidden", step !== 2);
 }

@@ -5,6 +5,27 @@ import { renderTabs } from "./tabs.js";
 import { updateSavedSection } from "./helpers.js";
 import { extractInlineArgs } from "./cli-options.js";
 
+function renderSessionLoadingState() {
+  dom.sessionSection.classList.remove("hidden");
+  updateSavedSection();
+  dom.sessionList.innerHTML = Array.from({ length: 2 }, () => `
+    <div class="rounded-[10px] border border-th-border-lt bg-th-card px-4 py-3" aria-hidden="true">
+      <div class="flex items-start gap-3">
+        <div class="flex-1 min-w-0 space-y-2">
+          <span class="th-skeleton th-skeleton-line h-[13px] w-32"></span>
+          <div class="flex gap-2 flex-wrap">
+            <span class="th-skeleton th-skeleton-line h-[10px] w-24"></span>
+            <span class="th-skeleton th-skeleton-line h-[10px] w-12"></span>
+            <span class="th-skeleton th-skeleton-line h-[10px] w-14"></span>
+          </div>
+          <span class="th-skeleton th-skeleton-line h-[9px] w-4/5"></span>
+        </div>
+        <span class="th-skeleton rounded-md h-6 w-6 shrink-0"></span>
+      </div>
+    </div>
+  `).join("");
+}
+
 export function collectSessionState() {
   const data = [];
   for (const [, ws] of workspaces) {
@@ -33,6 +54,7 @@ export async function restoreSession(config) {
 }
 
 export async function loadSessionsUI() {
+  renderSessionLoadingState();
   const sessions = await window.launcherAPI.listSessions();
   const entries = Object.entries(sessions || {});
   const validEntries = entries.filter(([, config]) => {

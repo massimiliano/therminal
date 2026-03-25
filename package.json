@@ -1,6 +1,6 @@
 {
   "name": "therminal-2",
-  "version": "0.5.0",
+  "version": "1.0.0",
   "description": "Launcher multi-sessione per CLI AI con terminali embedded.",
   "main": "main.js",
   "author": "",

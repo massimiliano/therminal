@@ -4,7 +4,25 @@ import { launchWorkspace } from "./workspace.js";
 import { updateSavedSection } from "./helpers.js";
 import { extractInlineArgs, normalizeInlineArgs } from "./cli-options.js";
 
+function renderPresetLoadingState() {
+  dom.presetSection.classList.remove("hidden");
+  updateSavedSection();
+  dom.presetList.innerHTML = Array.from({ length: 2 }, () => `
+    <div class="rounded-[10px] border border-th-border-lt bg-th-card px-4 py-3" aria-hidden="true">
+      <div class="flex items-start gap-3">
+        <div class="flex-1 min-w-0 space-y-2">
+          <span class="th-skeleton th-skeleton-line h-[13px] w-28"></span>
+          <span class="th-skeleton th-skeleton-line h-[10px] w-24"></span>
+          <span class="th-skeleton th-skeleton-line h-[9px] w-4/5"></span>
+        </div>
+        <span class="th-skeleton rounded-md h-6 w-6 shrink-0"></span>
+      </div>
+    </div>
+  `).join("");
+}
+
 export async function loadPresets() {
+  renderPresetLoadingState();
   const presets = await window.launcherAPI.listPresets();
   const entries = Object.entries(presets);
   if (entries.length === 0) {

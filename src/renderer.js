@@ -8,6 +8,8 @@ import { setOnCloseWorkspace } from "./modules/tabs.js";
 import { closeWorkspace } from "./modules/workspace.js";
 import { loadSessionsUI } from "./modules/session-state.js";
 import { initMonitor } from "./modules/monitor.js";
+import { initServiceStatusPanel } from "./modules/service-status.js";
+import { initUsagePanel } from "./modules/usage-panel.js";
 
 async function bootstrap() {
   if (!TerminalCtor || !FitAddonCtor || !window.launcherAPI) {
@@ -35,6 +37,8 @@ async function bootstrap() {
     bindIpcEvents();
     bindKeyboardShortcuts();
     initMonitor();
+    initServiceStatusPanel();
+    initUsagePanel();
   } catch (error) {
     console.error("Bootstrap failed:", error);
   }

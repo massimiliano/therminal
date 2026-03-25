@@ -1,6 +1,7 @@
 import { dom } from "./dom.js";
 
 let metricsInterval = null;
+let metricsPending = false;
 
 function createBar(label, icon) {
   const wrap = document.createElement("div");
@@ -40,9 +41,12 @@ export function initMonitor() {
   const cpu = createBar("CPU", "bi-cpu");
   const ram = createBar("RAM", "bi-memory");
 
-  container.append(cpu.el, ram.el);
+  container.replaceChildren(cpu.el, ram.el);
 
-  async function update() {
+  async function updateMetrics() {
+    if (metricsPending) return;
+    metricsPending = true;
+
     try {
       const m = await window.launcherAPI.getSystemMetrics();
 
@@ -52,14 +56,19 @@ export function initMonitor() {
       cpu.el.title = `CPU: ${m.cpuPercent}%`;
 
       ram.fill.style.width = `${m.memUsedPercent}%`;
-      ram.fill.className = `h-full rounded-full transition-all duration-500 ${barColor(m.memUsedPercent)}`;
+      ram.fill.className =
+        `h-full rounded-full transition-all duration-500 ${barColor(m.memUsedPercent)}`;
       ram.pct.textContent = `${m.memUsedPercent}%`;
       ram.el.title = `RAM: ${m.memUsedGB} / ${m.memTotalGB} GB (${m.memUsedPercent}%)`;
-    } catch {}
+    } catch {
+      // Ignore monitor update failures.
+    } finally {
+      metricsPending = false;
+    }
   }
 
-  update();
-  metricsInterval = setInterval(update, 3000);
+  updateMetrics();
+  metricsInterval = setInterval(updateMetrics, 3000);
 }
 
 export function destroyMonitor() {
@@ -67,4 +76,6 @@ export function destroyMonitor() {
     clearInterval(metricsInterval);
     metricsInterval = null;
   }
+
+  metricsPending = false;
 }

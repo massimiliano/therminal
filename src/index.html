@@ -33,7 +33,6 @@
   <body
     class="bg-th-bg text-zinc-200 h-screen flex flex-col overflow-hidden font-sans"
   >
-    <!-- ── Tab Bar ── -->
     <nav
       id="tabBar"
       class="flex items-center bg-th-surface border-b border-zinc-800/70 h-10 shrink-0 px-1 gap-1"
@@ -100,104 +99,156 @@
       </div>
     </nav>
 
-    <!-- ── Home View (Wizard) ── -->
     <div
       id="homeView"
-      class="flex-1 flex items-center justify-center p-6 overflow-y-auto overflow-x-hidden"
+      class="flex-1 p-6 overflow-y-auto overflow-x-hidden"
     >
-      <!-- Step 1: Client Count -->
-      <div id="step1" class="w-full max-w-5xl flex flex-col justify-center gap-10 min-h-0">
-        <!-- Top: logo + description + count selection -->
-        <div class="text-center">
-          <img src="../logo.png" alt="Therminal" class="w-32 h-32 mx-auto mb-3" />
-          <h1 class="text-2xl font-bold mb-1 text-white tracking-tight">Therminal</h1>
-          <p class="text-zinc-500 text-sm mb-8">Multi-session launcher per CLI AI · Claude · Codex · Gemini · Terminale</p>
-          <div class="flex justify-center gap-3 flex-wrap" id="countOptions"></div>
-        </div>
+      <div class="w-full max-w-[1500px] mx-auto min-h-full">
+        <div id="homeOverview" class="flex flex-col gap-6">
+          <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6 items-stretch">
+            <section class="min-w-0 rounded-2xl border border-zinc-800/70 bg-th-bg/70 px-6 py-7 xl:px-10 xl:py-8 flex items-center justify-center">
+              <div class="w-full min-w-0">
+                <div id="step1" class="w-full max-w-5xl mx-auto flex flex-col justify-center gap-10 min-h-0">
+                  <div class="text-center">
+                    <img src="../logo.png" alt="Therminal" class="w-32 h-32 mx-auto mb-3" />
+                    <h1 class="text-2xl font-bold mb-1 text-white tracking-tight">Therminal</h1>
+                    <p class="text-zinc-500 text-sm mb-8">Multi-session launcher per CLI AI &middot; Claude &middot; Codex &middot; Gemini &middot; Terminale</p>
+                    <div class="flex justify-center gap-3 flex-wrap" id="countOptions"></div>
+                  </div>
 
-        <!-- Bottom: sessions (left) + presets (right) -->
-        <div id="savedSection" class="grid grid-cols-2 gap-8 px-4 hidden">
-          <div id="sessionSection" class="hidden">
-            <p class="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-3">
-              <i class="bi bi-collection text-emerald-400 mr-1"></i>
-              Sessioni salvate
-            </p>
-            <div
-              id="sessionList"
-              class="flex flex-col gap-2 max-h-[35vh] overflow-y-auto py-1"
-            ></div>
+                  <div id="savedSection" class="grid grid-cols-1 2xl:grid-cols-2 gap-8 px-0 2xl:px-4 hidden">
+                    <div id="sessionSection" class="hidden">
+                      <p class="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-3">
+                        <i class="bi bi-collection text-emerald-400 mr-1"></i>
+                        Sessioni salvate
+                      </p>
+                      <div
+                        id="sessionList"
+                        class="flex flex-col gap-2 max-h-[35vh] overflow-y-auto py-1"
+                      ></div>
+                    </div>
+
+                    <div id="presetSection" class="hidden">
+                      <p class="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-3">
+                        <i class="bi bi-bookmark text-emerald-400 mr-1"></i>
+                        Preset singoli
+                      </p>
+                      <div
+                        id="presetList"
+                        class="flex flex-col gap-2 max-h-[35vh] overflow-y-auto py-1"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <aside class="min-w-0 rounded-2xl border border-zinc-800/70 bg-th-surface/80 backdrop-blur-sm p-4 xl:p-5 flex flex-col gap-4">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">Service Status</p>
+                  <h2 class="text-lg font-semibold text-white mt-1">Stato servizi</h2>
+                </div>
+                <button
+                  id="serviceStatusRefreshBtn"
+                  class="shrink-0 flex items-center gap-2 rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
+                  title="Aggiorna stato servizi"
+                >
+                  <i class="bi bi-arrow-clockwise"></i>
+                  <span>Aggiorna</span>
+                </button>
+              </div>
+
+              <div class="rounded-xl border border-zinc-800/70 bg-th-bg/60 px-3 py-2 text-[11px] text-zinc-500">
+                <span class="text-zinc-400">Ultimo update:</span>
+                <span id="serviceStatusUpdatedAt" class="ml-1">In attesa...</span>
+              </div>
+
+              <div id="serviceStatusList" class="flex flex-col gap-3 min-h-[320px]"></div>
+            </aside>
           </div>
 
-          <div id="presetSection" class="hidden">
-            <p class="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-3">
-              <i class="bi bi-bookmark text-emerald-400 mr-1"></i>
-              Preset singoli
-            </p>
-            <div
-              id="presetList"
-              class="flex flex-col gap-2 max-h-[35vh] overflow-y-auto py-1"
-            ></div>
+          <div class="rounded-2xl border border-zinc-800/70 bg-th-surface/70 backdrop-blur-sm p-4 xl:p-5">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">Usage CLI</p>
+                <h2 class="text-lg font-semibold text-white mt-1">Consumo provider</h2>
+              </div>
+              <button
+                id="usageSummaryRefreshBtn"
+                class="shrink-0 flex items-center gap-2 rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
+                title="Aggiorna usage provider"
+              >
+                <i class="bi bi-arrow-clockwise"></i>
+                <span>Aggiorna</span>
+              </button>
+            </div>
+
+            <div class="rounded-xl border border-zinc-800/70 bg-th-bg/60 px-3 py-2 text-[11px] text-zinc-500 mt-4">
+              <span class="text-zinc-400">Ultimo update:</span>
+              <span id="usageSummaryUpdatedAt" class="ml-1">In attesa...</span>
+            </div>
+
+            <div id="usageSummaryList" class="grid grid-cols-1 xl:grid-cols-3 gap-3 mt-4"></div>
           </div>
         </div>
-      </div>
 
-      <!-- Step 2: Provider Selection -->
-      <div id="step2" class="hidden w-full max-w-5xl min-w-0">
-        <div class="text-center mb-8">
-          <h2 class="text-xl font-bold text-white mb-1">Scegli i provider</h2>
-          <p class="text-zinc-500 text-sm">
-            Assegna un provider a ciascun client
-          </p>
-        </div>
+        <div id="step2" class="hidden w-full max-w-5xl mx-auto min-w-0">
+          <div class="text-center mb-8">
+            <h2 class="text-xl font-bold text-white mb-1">Scegli i provider</h2>
+            <p class="text-zinc-500 text-sm">
+              Assegna un provider a ciascun client
+            </p>
+          </div>
 
-        <div class="flex flex-wrap justify-center gap-3 mb-6" id="quickSelect"></div>
+          <div class="flex flex-wrap justify-center gap-3 mb-6" id="quickSelect"></div>
 
-        <div id="bulkFlags" class="mb-5"></div>
+          <div id="bulkFlags" class="mb-5"></div>
 
-        <div
-          id="clientGrid"
-          class="grid gap-3 mb-8 max-h-[50vh] overflow-y-auto overflow-x-hidden pr-1 min-w-0"
-        ></div>
+          <div
+            id="clientGrid"
+            class="grid gap-3 mb-8 max-h-[50vh] overflow-y-auto overflow-x-hidden pr-1 min-w-0"
+          ></div>
 
-        <div class="max-w-md mx-auto mb-8">
-          <label
-            class="block text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2"
-            >Working Directory</label
-          >
-          <input
-            id="cwdInput"
-            type="text"
-            value="."
-            class="w-full bg-zinc-900 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm font-mono text-zinc-300 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20"
-          />
-        </div>
-
-        <div class="flex justify-between items-center max-w-md mx-auto">
-          <button
-            id="backBtn"
-            class="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm"
-          >
-            <i class="bi bi-arrow-left"></i> Indietro
-          </button>
-          <div class="flex items-center gap-2">
-            <button
-              id="savePresetBtn"
-              class="flex items-center gap-2 border border-zinc-700/50 hover:border-emerald-500/50 text-zinc-400 hover:text-white px-4 py-2.5 rounded-lg text-sm transition-colors"
+          <div class="max-w-md mx-auto mb-8">
+            <label
+              class="block text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2"
+              >Working Directory</label
             >
-              <i class="bi bi-bookmark-plus"></i> Salva Preset
-            </button>
+            <input
+              id="cwdInput"
+              type="text"
+              value="."
+              class="w-full bg-zinc-900 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm font-mono text-zinc-300 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20"
+            />
+          </div>
+
+          <div class="flex justify-between items-center max-w-md mx-auto">
             <button
-              id="launchBtn"
-              class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors"
+              id="backBtn"
+              class="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm"
             >
-              Avvia <i class="bi bi-play-fill"></i>
+              <i class="bi bi-arrow-left"></i> Indietro
             </button>
+            <div class="flex items-center gap-2">
+              <button
+                id="savePresetBtn"
+                class="flex items-center gap-2 border border-zinc-700/50 hover:border-emerald-500/50 text-zinc-400 hover:text-white px-4 py-2.5 rounded-lg text-sm transition-colors"
+              >
+                <i class="bi bi-bookmark-plus"></i> Salva Preset
+              </button>
+              <button
+                id="launchBtn"
+                class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors"
+              >
+                Avvia <i class="bi bi-play-fill"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ── Workspace Container ── -->
     <div id="workspaceContainer" class="flex-1 hidden overflow-hidden relative">
       <div
         id="broadcastBar"
@@ -216,7 +267,6 @@
       </div>
     </div>
 
-    <!-- ── Maximize Overlay ── -->
     <div
       id="maximizeOverlay"
       class="fixed inset-0 z-50 bg-th-bg flex flex-col hidden"
@@ -236,7 +286,6 @@
       <div id="maximizeBody" class="flex-1 min-h-0 flex flex-col"></div>
     </div>
 
-    <!-- ── Preset Name Modal ── -->
     <div
       id="presetNameModal"
       class="fixed inset-0 z-[100] flex items-center justify-center hidden"
@@ -272,7 +321,6 @@
       </div>
     </div>
 
-    <!-- ── Shortcuts / Info Modal ── -->
     <div
       id="shortcutsModal"
       class="fixed inset-0 z-[100] flex items-center justify-center hidden"
@@ -297,7 +345,6 @@
           </button>
         </div>
         <div class="px-5 py-4 overflow-y-auto">
-          <!-- App Info -->
           <section class="mb-4">
             <p class="text-sm text-zinc-400 leading-relaxed mb-2.5">
               Launcher multi-sessione per CLI AI (Claude, Codex, Gemini, Terminale) su
@@ -307,7 +354,7 @@
               <span
                 class="text-[11px] text-zinc-600 flex items-center gap-[5px]"
                 ><i class="bi bi-tag text-emerald-400 text-xs"></i>
-                v0.5.0</span
+                v1.0.0</span
               >
               <span
                 class="text-[11px] text-zinc-600 flex items-center gap-[5px]"

@@ -2,6 +2,7 @@ export const dom = {
   tabBar: document.getElementById("tabBar"),
   homeTab: document.getElementById("homeTab"),
   homeView: document.getElementById("homeView"),
+  homeOverview: document.getElementById("homeOverview"),
   workspaceContainer: document.getElementById("workspaceContainer"),
   step1El: document.getElementById("step1"),
   step2El: document.getElementById("step2"),
@@ -37,4 +38,10 @@ export const dom = {
   sessionSection: document.getElementById("sessionSection"),
   sessionList: document.getElementById("sessionList"),
   monitorWidget: document.getElementById("monitorWidget"),
+  serviceStatusList: document.getElementById("serviceStatusList"),
+  serviceStatusRefreshBtn: document.getElementById("serviceStatusRefreshBtn"),
+  serviceStatusUpdatedAt: document.getElementById("serviceStatusUpdatedAt"),
+  usageSummaryList: document.getElementById("usageSummaryList"),
+  usageSummaryRefreshBtn: document.getElementById("usageSummaryRefreshBtn"),
+  usageSummaryUpdatedAt: document.getElementById("usageSummaryUpdatedAt"),
 };
