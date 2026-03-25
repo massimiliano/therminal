@@ -30,7 +30,7 @@ jobs:
         run: npm run rebuild-pty
 
       - name: Build Windows installer
-        run: npm run build
+        run: npm run build -- --publish never
 
       - name: Create GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
