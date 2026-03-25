@@ -1,5 +1,5 @@
 {
-  "name": "therminal-2",
+  "name": "therminal",
   "version": "1.0.1",
   "description": "Launcher multi-sessione per CLI AI con terminali embedded.",
   "main": "main.js",

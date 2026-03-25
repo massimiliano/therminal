@@ -1,8 +1,9 @@
 @echo off
+set SCRIPT_DIR=%~dp0
 call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
 set GYP_MSVS_SPECTRE_MITIGATIONS=false
 set GYP_MSVS_VERSION=2022
-cd /d C:\Users\bianc\Desktop\progetti\therminal-2
+cd /d "%SCRIPT_DIR%"
 
 echo === Rebuilding node-pty for Electron ===
 call npx electron-rebuild -f -w node-pty
