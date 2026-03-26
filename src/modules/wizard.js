@@ -5,6 +5,8 @@ import {
   getInlineOptionsSchema,
   normalizeInlineArgs,
 } from "./cli-options.js";
+import { showNotice } from "./notices.js";
+import { getFirstAvailableProvider, refreshProviderCatalog } from "./providers.js";
 
 export function showStep(step) {
   state.wizardStep = step;
@@ -83,14 +85,20 @@ export function buildCountOptions() {
     card.append(dotGrid, bottom);
     option.append(card, label);
 
-    card.addEventListener("click", () => {
-      state.wizardClientCount = count;
-      const defaultProvider = Object.keys(providerCatalog)[0] || "claude";
-      state.wizardProviders = new Array(count).fill(defaultProvider);
-      state.wizardInlineArgs = new Array(count).fill("");
-      state.wizardBulkInlineArgs = {};
-      buildStep2();
-      showStep(2);
+    card.addEventListener("click", async () => {
+      try {
+        await refreshProviderCatalog(true);
+        state.wizardClientCount = count;
+        const defaultProvider = getFirstAvailableProvider();
+        state.wizardProviders = new Array(count).fill(defaultProvider);
+        state.wizardInlineArgs = new Array(count).fill("");
+        state.wizardBulkInlineArgs = {};
+        buildStep2();
+        showStep(2);
+      } catch (error) {
+        console.error("Provider preload failed:", error);
+        showNotice("Impossibile rilevare i provider CLI disponibili.", { type: "error" });
+      }
     });
     dom.countOptions.append(option);
   }
@@ -232,6 +240,7 @@ function renderBulkFlagsPanel(providerEntries) {
   grid.className = "grid grid-cols-1 md:grid-cols-2 gap-2";
 
   for (const [providerKey, provider] of providerEntries) {
+    const isUnavailable = provider?.available === false;
     const row = document.createElement("div");
     row.className =
       "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 bg-th-bg border border-th-border-lt rounded-lg px-2 py-1.5 min-w-0";
@@ -249,11 +258,21 @@ function renderBulkFlagsPanel(providerEntries) {
         ? "Comando per tutti i terminali normali"
         : "Flag per tutti i terminali di questo tipo";
     input.value = state.wizardBulkInlineArgs[providerKey] || "";
+    input.disabled = isUnavailable;
+    if (isUnavailable) {
+      input.placeholder = "Provider non disponibile";
+      input.classList.add("opacity-50", "cursor-not-allowed");
+    }
 
     const applyBtn = document.createElement("button");
     applyBtn.className =
       `px-2 py-1 rounded-md text-[10px] font-semibold border cursor-pointer transition-all duration-150 ${getProviderActionClass(providerKey)}`;
     applyBtn.textContent = "Applica";
+    applyBtn.disabled = isUnavailable;
+    if (isUnavailable) {
+      applyBtn.className =
+        "px-2 py-1 rounded-md text-[10px] font-semibold border border-zinc-700 text-zinc-600 cursor-not-allowed opacity-60";
+    }
 
     const apply = () => {
       state.wizardBulkInlineArgs[providerKey] = input.value;
@@ -287,10 +306,16 @@ export function buildStep2() {
 
   dom.quickSelect.innerHTML = "";
   for (const [key, prov] of providerEntries) {
+    const isUnavailable = prov?.available === false;
     const btn = document.createElement("button");
-    btn.className = `py-[7px] px-[18px] rounded-full text-xs font-semibold border border-th-border-lt bg-th-card cursor-pointer transition-all duration-150 hover:-translate-y-px ${PROVIDER_STYLE[key]?.quick || ""}`;
+    btn.className = isUnavailable
+      ? "py-[7px] px-[18px] rounded-full text-xs font-semibold border border-zinc-800 bg-th-card text-zinc-600 cursor-not-allowed opacity-60"
+      : `py-[7px] px-[18px] rounded-full text-xs font-semibold border border-th-border-lt bg-th-card cursor-pointer transition-all duration-150 hover:-translate-y-px ${PROVIDER_STYLE[key]?.quick || ""}`;
     const shortName = prov.label.replace(" CLI", "");
-    btn.innerHTML = `<i class="bi bi-check2-all"></i> Tutti: ${shortName}`;
+    btn.innerHTML = isUnavailable
+      ? `<i class="bi bi-slash-circle"></i> ${shortName} mancante`
+      : `<i class="bi bi-check2-all"></i> Tutti: ${shortName}`;
+    btn.disabled = isUnavailable;
     btn.addEventListener("click", () => {
       state.wizardProviders.fill(key);
       state.wizardInlineArgs.fill(state.wizardBulkInlineArgs[key] || "");
@@ -322,9 +347,13 @@ export function renderClientGrid() {
 
   for (let i = 0; i < state.wizardClientCount; i++) {
     const selectedKey = state.wizardProviders[i];
+    const selectedProvider = providerCatalog[selectedKey] || {};
+    const isSelectedUnavailable = selectedProvider.available === false;
 
     const card = document.createElement("div");
-    card.className = `flex flex-col items-center px-2.5 py-3 bg-th-card border rounded-xl gap-2 min-w-0 transition-[border-color,box-shadow] duration-200 ${PROVIDER_STYLE[selectedKey]?.card || "border-th-border"}`;
+    card.className = isSelectedUnavailable
+      ? "flex flex-col items-center px-2.5 py-3 bg-th-card border border-red-500/30 rounded-xl gap-2 min-w-0 transition-[border-color,box-shadow] duration-200"
+      : `flex flex-col items-center px-2.5 py-3 bg-th-card border rounded-xl gap-2 min-w-0 transition-[border-color,box-shadow] duration-200 ${PROVIDER_STYLE[selectedKey]?.card || "border-th-border"}`;
 
     const label = document.createElement("span");
     label.className = "text-[11px] font-bold text-zinc-600 tracking-wide";
@@ -335,15 +364,19 @@ export function renderClientGrid() {
     options.style.gridTemplateColumns = `repeat(${optionCols}, minmax(0, 1fr))`;
 
     for (const [key, prov] of providerEntries) {
+      const isUnavailable = prov?.available === false;
       const toggle = document.createElement("button");
       const isSelected = selectedKey === key;
       const shortName = prov.label.replace(" CLI", "");
-      toggle.className = `w-full min-w-0 truncate px-2.5 py-[5px] rounded-md text-[11px] font-semibold border cursor-pointer transition-all duration-150 ${
-        isSelected
-          ? PROVIDER_STYLE[key]?.toggle || ""
-          : "border-transparent bg-th-bg text-zinc-600 hover:text-zinc-400 hover:bg-th-hover"
-      }`;
-      toggle.textContent = shortName;
+      toggle.className = isUnavailable
+        ? "w-full min-w-0 truncate px-2.5 py-[5px] rounded-md text-[11px] font-semibold border border-zinc-800 bg-th-bg text-zinc-600 cursor-not-allowed opacity-60"
+        : `w-full min-w-0 truncate px-2.5 py-[5px] rounded-md text-[11px] font-semibold border cursor-pointer transition-all duration-150 ${
+            isSelected
+              ? PROVIDER_STYLE[key]?.toggle || ""
+              : "border-transparent bg-th-bg text-zinc-600 hover:text-zinc-400 hover:bg-th-hover"
+          }`;
+      toggle.textContent = isUnavailable ? `${shortName} (manca)` : shortName;
+      toggle.disabled = isUnavailable;
       toggle.addEventListener("click", () => {
         state.wizardProviders[i] = key;
         state.wizardInlineArgs[i] = state.wizardBulkInlineArgs[key] || "";
@@ -373,6 +406,14 @@ export function renderClientGrid() {
     });
 
     inlineWrap.append(inlineLabel, inlineInput);
+
+    if (isSelectedUnavailable) {
+      const unavailableHint = document.createElement("p");
+      unavailableHint.className = "w-full text-[10px] text-red-300";
+      unavailableHint.textContent =
+        selectedProvider.availabilityMessage || "Provider CLI non rilevato su questo sistema.";
+      inlineWrap.append(unavailableHint);
+    }
 
     const composer = buildInlineComposer(selectedKey, i, inlineInput);
     if (composer) inlineWrap.append(composer);

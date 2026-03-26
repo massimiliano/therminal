@@ -2,15 +2,17 @@ import { state, sessionStore, providerCatalog } from "./state.js";
 import { dom } from "./dom.js";
 import { queueFit } from "./helpers.js";
 import { switchView } from "./tabs.js";
-import { showStep } from "./wizard.js";
+import { buildStep2, showStep } from "./wizard.js";
 import { launchWorkspace } from "./workspace.js";
-import { saveCurrentAsPreset, confirmSavePreset, saveWorkspaceAsPreset } from "./presets.js";
+import { saveCurrentAsPreset, confirmSavePreset, saveWorkspaceAsPreset, loadPresets } from "./presets.js";
 import { toggleBroadcast, sendBroadcast } from "./broadcast.js";
 import { changeFontSize } from "./fontsize.js";
 import { restoreMaximized } from "./maximize.js";
 import { restartWorkspaceSession } from "./session.js";
 import { toggleShortcutsModal } from "./shortcuts.js";
 import { saveSessionAs, collectSessionState, loadSessionsUI } from "./session-state.js";
+import { hideNotice, showNotice } from "./notices.js";
+import { dismissProviderAvailabilityBanner, refreshProviderCatalog } from "./providers.js";
 
 export function bindIpcEvents() {
   window.launcherAPI.onSessionData((payload) => {
@@ -63,6 +65,31 @@ export function bindIpcEvents() {
 }
 
 export function bindUiEvents() {
+  dom.appNoticeCloseBtn?.addEventListener("click", () => hideNotice());
+  dom.providerStatusCloseBtn?.addEventListener("click", () => dismissProviderAvailabilityBanner());
+
+  dom.providerStatusRefreshBtn?.addEventListener("click", async () => {
+    try {
+      dom.providerStatusRefreshBtn.disabled = true;
+      await refreshProviderCatalog(true);
+      await Promise.all([loadPresets(), loadSessionsUI()]);
+      if (!dom.step2El.classList.contains("hidden")) {
+        buildStep2();
+      }
+    } catch (error) {
+      console.error("Provider refresh failed:", error);
+      showNotice("Impossibile aggiornare lo stato dei provider CLI.", { type: "error" });
+    } finally {
+      dom.providerStatusRefreshBtn.disabled = false;
+    }
+  });
+
+  dom.cwdBrowseBtn.addEventListener("click", async () => {
+    const selectedPath = await window.launcherAPI.openDirectoryDialog(dom.cwdInput.value.trim());
+    if (!selectedPath) return;
+    dom.cwdInput.value = selectedPath;
+  });
+
   dom.saveSessionBtn.addEventListener("click", () => {
     const data = collectSessionState();
     if (data.workspaces.length === 0) return;

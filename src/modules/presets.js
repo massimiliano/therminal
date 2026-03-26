@@ -3,6 +3,7 @@ import { dom } from "./dom.js";
 import { launchWorkspace } from "./workspace.js";
 import { updateSavedSection } from "./helpers.js";
 import { extractInlineArgs, normalizeInlineArgs } from "./cli-options.js";
+import { getUnavailableProviders, getProviderLabel } from "./providers.js";
 
 function renderPresetLoadingState() {
   dom.presetSection.classList.remove("hidden");
@@ -62,6 +63,14 @@ export async function loadPresets() {
     pathEl.textContent = config.cwd || ".";
 
     info.append(title, desc, pathEl);
+
+    const unavailable = getUnavailableProviders(config.providers || []);
+    if (unavailable.length > 0) {
+      const warn = document.createElement("span");
+      warn.className = "text-[9px] text-red-300 font-medium";
+      warn.textContent = `CLI mancante: ${unavailable.map((key) => getProviderLabel(key)).join(", ")}`;
+      info.append(warn);
+    }
 
     const deleteBtn = document.createElement("button");
     deleteBtn.className =

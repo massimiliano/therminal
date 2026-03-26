@@ -4,6 +4,7 @@ import { launchWorkspaceFromConfig } from "./workspace.js";
 import { renderTabs } from "./tabs.js";
 import { updateSavedSection } from "./helpers.js";
 import { extractInlineArgs } from "./cli-options.js";
+import { getUnavailableProviders, getProviderLabel, validateProviderSelection } from "./providers.js";
 
 function renderSessionLoadingState() {
   dom.sessionSection.classList.remove("hidden");
@@ -47,6 +48,12 @@ export async function saveSessionAs(name) {
 }
 
 export async function restoreSession(config) {
+  const requestedProviders = config.workspaces.flatMap((ws) => ws.providers || []);
+  const validation = await validateProviderSelection(requestedProviders, { force: true, notify: true });
+  if (!validation.ok) {
+    return;
+  }
+
   for (const ws of config.workspaces) {
     await launchWorkspaceFromConfig(ws);
   }
@@ -116,6 +123,14 @@ export async function loadSessionsUI() {
     pathEl.textContent = config.workspaces[0]?.cwd || ".";
 
     info.append(title, wsDesc, pathEl);
+
+    const unavailable = getUnavailableProviders(config.workspaces.flatMap((ws) => ws.providers || []));
+    if (unavailable.length > 0) {
+      const warn = document.createElement("span");
+      warn.className = "text-[9px] text-red-300 font-medium";
+      warn.textContent = `CLI mancante: ${unavailable.map((key) => getProviderLabel(key)).join(", ")}`;
+      info.append(warn);
+    }
 
     const deleteBtn = document.createElement("button");
     deleteBtn.className =

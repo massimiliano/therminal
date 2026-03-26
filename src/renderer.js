@@ -1,15 +1,16 @@
-import { TerminalCtor, FitAddonCtor, providerCatalog } from "./modules/state.js";
+import { TerminalCtor, FitAddonCtor } from "./modules/state.js";
 import { updateFontSizeLabel } from "./modules/fontsize.js";
 import { buildCountOptions } from "./modules/wizard.js";
 import { loadPresets } from "./modules/presets.js";
 import { bindUiEvents, bindIpcEvents } from "./modules/events.js";
-import { bindKeyboardShortcuts } from "./modules/shortcuts.js";
+import { bindKeyboardShortcuts, initShortcutsModal } from "./modules/shortcuts.js";
 import { setOnCloseWorkspace } from "./modules/tabs.js";
 import { closeWorkspace } from "./modules/workspace.js";
 import { loadSessionsUI } from "./modules/session-state.js";
 import { initMonitor } from "./modules/monitor.js";
 import { initServiceStatusPanel } from "./modules/service-status.js";
 import { initUsagePanel } from "./modules/usage-panel.js";
+import { refreshProviderCatalog } from "./modules/providers.js";
 
 async function bootstrap() {
   if (!TerminalCtor || !FitAddonCtor || !window.launcherAPI) {
@@ -18,10 +19,7 @@ async function bootstrap() {
   }
 
   try {
-    const providers = await window.launcherAPI.listProviders();
-    for (const [key, value] of Object.entries(providers)) {
-      providerCatalog[key] = value;
-    }
+    await refreshProviderCatalog();
 
     if (typeof Notification !== "undefined" && Notification.permission === "default") {
       Notification.requestPermission();
@@ -36,6 +34,7 @@ async function bootstrap() {
     bindUiEvents();
     bindIpcEvents();
     bindKeyboardShortcuts();
+    initShortcutsModal();
     initMonitor();
     initServiceStatusPanel();
     initUsagePanel();

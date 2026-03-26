@@ -15,6 +15,8 @@ import { dom } from "./dom.js";
 import { shortId, queueFit } from "./helpers.js";
 import { showSearch } from "./search.js";
 import { toggleMaximize, restoreMaximized } from "./maximize.js";
+import { showNotice } from "./notices.js";
+import { validateProviderSelection } from "./providers.js";
 
 function isPasteShortcut(event) {
   const key = String(event.key || "").toLowerCase();
@@ -348,6 +350,8 @@ export async function createWorkspaceSession(workspace, client, row, insertBefor
       await restartWorkspaceSession(session.id);
     } catch (error) {
       console.error("Restart failed:", error);
+    } finally {
+      restartBtn.disabled = false;
     }
   });
 
@@ -400,9 +404,20 @@ export async function restartWorkspaceSession(sessionId) {
   const row = s.row;
   const nextSibling = s.cell.nextSibling;
 
+  const validation = await validateProviderSelection([client?.provider], { force: true, notify: true });
+  if (!validation.ok) {
+    return;
+  }
+
   destroySession(sessionId, { notifyBackend: true });
 
   if (client && row) {
-    await createWorkspaceSession(ws, client, row, nextSibling);
+    try {
+      await createWorkspaceSession(ws, client, row, nextSibling);
+    } catch (error) {
+      console.error("Restart create session failed:", error);
+      showNotice(error?.message || "Impossibile riavviare la sessione.", { type: "error" });
+      throw error;
+    }
   }
 }

@@ -33,6 +33,24 @@
   <body
     class="bg-th-bg text-zinc-200 h-screen flex flex-col overflow-hidden font-sans"
   >
+    <div
+      id="appNotice"
+      class="fixed top-12 right-4 z-[220] hidden max-w-md rounded-xl border px-4 py-3 shadow-[0_16px_48px_rgba(0,0,0,0.45)] backdrop-blur-md"
+    >
+      <div class="flex items-start gap-3">
+        <i id="appNoticeIcon" class="bi bi-exclamation-triangle mt-0.5 text-sm"></i>
+        <p id="appNoticeText" class="flex-1 text-sm leading-5"></p>
+        <button
+          id="appNoticeCloseBtn"
+          type="button"
+          class="text-xs text-zinc-400 hover:text-white transition-colors"
+          title="Chiudi avviso"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+
     <nav
       id="tabBar"
       class="flex items-center bg-th-surface border-b border-zinc-800/70 h-10 shrink-0 px-1 gap-1"
@@ -104,6 +122,37 @@
       class="flex-1 p-6 overflow-y-auto overflow-x-hidden"
     >
       <div class="w-full max-w-[1500px] mx-auto min-h-full">
+        <div
+          id="providerStatusBanner"
+          class="hidden mb-5 rounded-2xl border border-amber-500/25 bg-amber-500/8 px-4 py-3"
+        >
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-amber-300">
+                Provider CLI
+              </p>
+              <p id="providerStatusText" class="mt-1 text-sm text-amber-100 leading-5"></p>
+            </div>
+            <div class="shrink-0 flex items-start gap-2">
+              <button
+                id="providerStatusRefreshBtn"
+                type="button"
+                class="rounded-lg border border-amber-500/30 px-3 py-2 text-xs font-medium text-amber-100 transition-colors hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-white"
+              >
+                Rileva di nuovo
+              </button>
+              <button
+                id="providerStatusCloseBtn"
+                type="button"
+                class="rounded-lg border border-transparent px-2 py-2 text-xs text-amber-200/80 transition-colors hover:text-white hover:bg-black/10"
+                title="Chiudi warning provider"
+              >
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div id="homeOverview" class="flex flex-col gap-6">
           <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6 items-stretch">
             <section class="min-w-0 rounded-2xl border border-zinc-800/70 bg-th-bg/70 px-6 py-7 xl:px-10 xl:py-8 flex items-center justify-center">
@@ -215,12 +264,27 @@
               class="block text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2"
               >Working Directory</label
             >
-            <input
-              id="cwdInput"
-              type="text"
-              value="."
-              class="w-full bg-zinc-900 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm font-mono text-zinc-300 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20"
-            />
+            <div class="flex items-center gap-2">
+              <input
+                id="cwdInput"
+                type="text"
+                value="."
+                placeholder="Scrivi o incolla un path"
+                class="flex-1 min-w-0 bg-zinc-900 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm font-mono text-zinc-300 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20"
+              />
+              <button
+                id="cwdBrowseBtn"
+                type="button"
+                class="shrink-0 flex items-center gap-2 border border-zinc-700/50 hover:border-emerald-500/50 text-zinc-300 hover:text-white px-3 py-2 rounded-lg text-sm transition-colors"
+                title="Apri selettore directory"
+              >
+                <i class="bi bi-folder2-open"></i>
+                <span>Sfoglia</span>
+              </button>
+            </div>
+            <p class="mt-2 text-[11px] text-zinc-600">
+              Puoi scrivere o incollare il path, oppure scegliere la cartella da una finestra.
+            </p>
           </div>
 
           <div class="flex justify-between items-center max-w-md mx-auto">
@@ -350,23 +414,35 @@
               Launcher multi-sessione per CLI AI (Claude, Codex, Gemini, Terminale) su
               Windows. Basato su Electron, xterm.js e node-pty.
             </p>
-            <div class="flex gap-4 flex-wrap">
-              <span
-                class="text-[11px] text-zinc-600 flex items-center gap-[5px]"
-                ><i class="bi bi-tag text-emerald-400 text-xs"></i>
-                v1.0.0</span
+            <p class="text-xs text-zinc-500 leading-relaxed">
+              Se chiudi il banner home, qui puoi comunque controllare i CLI rilevati e
+              aggiornare lo stato senza riavviare l'app.
+            </p>
+          </section>
+
+          <div class="h-px bg-th-border my-3"></div>
+
+          <section class="mb-4">
+            <div class="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3
+                  class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest"
+                >
+                  Rilevamento Provider
+                </h3>
+                <p class="text-xs text-zinc-500 mt-1">
+                  Stato locale dei CLI richiesti da Therminal.
+                </p>
+              </div>
+              <button
+                id="shortcutsProviderRefreshBtn"
+                type="button"
+                class="shrink-0 rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
               >
-              <span
-                class="text-[11px] text-zinc-600 flex items-center gap-[5px]"
-                ><i class="bi bi-cpu text-emerald-400 text-xs"></i> Electron +
-                xterm.js</span
-              >
-              <span
-                class="text-[11px] text-zinc-600 flex items-center gap-[5px]"
-                ><i class="bi bi-windows text-emerald-400 text-xs"></i> Windows
-                10/11</span
-              >
+                Rileva di nuovo
+              </button>
             </div>
+            <div id="shortcutsProviderList" class="flex flex-col gap-2"></div>
           </section>
 
           <div class="h-px bg-th-border my-3"></div>

@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const { spawnSync } = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -29,9 +30,11 @@ let mainWindow = null;
 let usageSummaryCache = null;
 const usagePanelItemCache = new Map();
 let serviceStatusCache = null;
+let providerAvailabilityCache = null;
 const USAGE_CACHE_TTL_MS = 60000;
 const USAGE_PANEL_CACHE_TTL_MS = 240000;
 const SERVICE_STATUS_CACHE_TTL_MS = 240000;
+const PROVIDER_CACHE_TTL_MS = 15000;
 
 // ─── CPU Metrics ────────────────────────────────────────
 let prevCpuInfo = null;
@@ -69,6 +72,102 @@ function numberOrZero(value) {
 
 function invalidateUsageSummaryCache() {
   usageSummaryCache = null;
+}
+
+function shellEscape(value) {
+  return `'${String(value).replace(/'/g, `'\\''`)}'`;
+}
+
+function resolveCommandPath(command) {
+  if (typeof command !== "string" || command.trim().length === 0) {
+    return { available: false, path: null };
+  }
+
+  const trimmed = command.trim();
+  if (trimmed.includes("\\") || trimmed.includes("/")) {
+    const directPath = path.resolve(trimmed);
+    if (fs.existsSync(directPath)) {
+      return { available: true, path: directPath };
+    }
+  }
+
+  const options = {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    shell: false,
+    windowsHide: true
+  };
+
+  if (process.platform === "win32") {
+    const result = spawnSync("where.exe", [trimmed], options);
+    const candidates = String(result.stdout || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    if (result.status === 0 && candidates.length > 0) {
+      return { available: true, path: candidates[0] };
+    }
+
+    return { available: false, path: null };
+  }
+
+  const shellPath = process.env.SHELL || "/bin/sh";
+  const result = spawnSync(shellPath, ["-lc", `command -v ${shellEscape(trimmed)}`], options);
+  const resolved = String(result.stdout || "").trim().split(/\r?\n/).find(Boolean) || null;
+  return {
+    available: result.status === 0 && Boolean(resolved),
+    path: resolved
+  };
+}
+
+function getProviderCatalog(force = false) {
+  const cacheIsFresh =
+    providerAvailabilityCache &&
+    providerAvailabilityCache.data &&
+    Date.now() - providerAvailabilityCache.timestamp < PROVIDER_CACHE_TTL_MS;
+
+  if (!force && cacheIsFresh) {
+    return providerAvailabilityCache.data;
+  }
+
+  const data = {};
+
+  for (const [key, provider] of Object.entries(PROVIDERS)) {
+    const command = provider.defaultCommand;
+    const kind = command ? "cli" : "shell";
+    const availability = command
+      ? resolveCommandPath(command)
+      : { available: true, path: null };
+
+    data[key] = {
+      ...provider,
+      kind,
+      available: availability.available,
+      resolvedCommandPath: availability.path,
+      availabilityMessage:
+        availability.available || !command
+          ? null
+          : `${provider.label} non trovato. Installa "${command}" e assicurati che sia disponibile nel PATH.`
+    };
+  }
+
+  providerAvailabilityCache = {
+    timestamp: Date.now(),
+    data
+  };
+
+  return data;
+}
+
+function assertProviderAvailable(providerKey, force = false) {
+  const provider = getProviderCatalog(force)[providerKey];
+  if (provider?.kind === "cli" && provider.available === false) {
+    throw new Error(
+      provider.availabilityMessage ||
+        `${provider.label || providerKey} non trovato. Installa il relativo CLI e riprova.`
+    );
+  }
 }
 
 function getPresetsPath() {
@@ -152,7 +251,25 @@ function sanitizeSessionPayload(payload = {}) {
     throw new Error(`La directory non esiste: ${cwd}`);
   }
 
+  assertProviderAvailable(provider);
+
   return { provider, command, cwd };
+}
+
+function getExistingDirectory(defaultPath) {
+  if (typeof defaultPath !== "string" || defaultPath.trim().length === 0) {
+    return undefined;
+  }
+
+  const resolved = path.resolve(defaultPath.trim());
+
+  try {
+    if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+      return resolved;
+    }
+  } catch {}
+
+  return undefined;
 }
 
 function getLatestActiveSession(provider) {
@@ -1144,7 +1261,7 @@ async function getUsagePanelProvider({ provider, force = false, cwd } = {}) {
     const errorItem = buildUsagePanelErrorItem(
       provider,
       provider === "codex" ? "Codex" : provider === "gemini" ? "Gemini" : "Claude",
-      new Error("Nessun output valido da probe o log."),
+      new Error("Nessun output valido."),
       `CLI /${USAGE_PROBE_PLANS[provider].command.slice(1)}`
     );
     usagePanelItemCache.set(cacheKey, { timestamp: Date.now(), data: errorItem });
@@ -1527,8 +1644,8 @@ app.on("window-all-closed", () => {
   }
 });
 
-ipcMain.handle("providers:list", () => {
-  return PROVIDERS;
+ipcMain.handle("providers:list", (_event, payload = {}) => {
+  return getProviderCatalog(Boolean(payload?.force));
 });
 
 ipcMain.handle("session:create", (event, payload) => {
@@ -1722,6 +1839,21 @@ ipcMain.handle("usage:summary", () => getUsageSummary());
 ipcMain.handle("usage:panel", (_event, payload) => getUsagePanelSummary(payload || {}));
 ipcMain.handle("usage:panel-provider", (_event, payload) => getUsagePanelProvider(payload || {}));
 ipcMain.handle("services:status", (_event, payload) => getServiceStatuses(Boolean(payload?.force)));
+
+ipcMain.handle("dialog:open-directory", async (event, payload = {}) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const result = await dialog.showOpenDialog(win || undefined, {
+    title: "Seleziona working directory",
+    defaultPath: getExistingDirectory(payload.defaultPath),
+    properties: ["openDirectory"]
+  });
+
+  if (result.canceled || !Array.isArray(result.filePaths) || result.filePaths.length === 0) {
+    return null;
+  }
+
+  return result.filePaths[0];
+});
 
 ipcMain.handle("dialog:save-file", async (event, { defaultFilename, content }) => {
   const win = BrowserWindow.fromWebContents(event.sender);

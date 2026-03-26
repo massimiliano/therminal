@@ -8,7 +8,7 @@ function subscribe(channel, callback) {
 
 contextBridge.exposeInMainWorld("launcherAPI", {
   // Session management
-  listProviders: () => ipcRenderer.invoke("providers:list"),
+  listProviders: (payload = {}) => ipcRenderer.invoke("providers:list", payload),
   createSession: (payload) => ipcRenderer.invoke("session:create", payload),
   writeSession: (id, data) => ipcRenderer.send("session:write", { id, data }),
   resizeSession: (id, cols, rows) => ipcRenderer.send("session:resize", { id, cols, rows }),
@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld("launcherAPI", {
 
   // Shell & dialog
   openExternal: (url) => ipcRenderer.invoke("shell:open-external", url),
+  openDirectoryDialog: (defaultPath) => ipcRenderer.invoke("dialog:open-directory", { defaultPath }),
   readClipboardText: () => ipcRenderer.invoke("clipboard:read-text"),
   writeClipboardText: (text) => ipcRenderer.invoke("clipboard:write-text", text),
   saveLogFile: (defaultFilename, content) =>

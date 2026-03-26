@@ -6,6 +6,8 @@ import { switchView, renderTabs } from "./tabs.js";
 import { showStep } from "./wizard.js";
 import { restoreMaximized } from "./maximize.js";
 import { buildClientCommand, extractInlineArgs, normalizeInlineArgs } from "./cli-options.js";
+import { showNotice } from "./notices.js";
+import { validateProviderSelection } from "./providers.js";
 
 async function createWorkspaceFromClients({ name, clients, meta = {} }) {
   state.workspaceCounter++;
@@ -75,29 +77,51 @@ async function createWorkspaceFromClients({ name, clients, meta = {} }) {
   workspaces.set(wsId, workspace);
   switchView(wsId);
 
-  for (let r = 0; r < gridRows; r++) {
-    for (let c = 0; c < gridCols; c++) {
-      const clientIndex = r * gridCols + c;
-      if (clientIndex >= positionedClients.length) break;
+  try {
+    for (let r = 0; r < gridRows; r++) {
+      for (let c = 0; c < gridCols; c++) {
+        const clientIndex = r * gridCols + c;
+        if (clientIndex >= positionedClients.length) break;
 
-      if (c > 0) {
-        const vDiv = document.createElement("div");
-        vDiv.className =
-          "grid-divider vertical bg-th-border relative z-[2] transition-[background] duration-150 hover:bg-emerald-400 cursor-col-resize w-1 shrink-0";
-        const capturedR = r;
-        const capturedGap = c - 1;
-        vDiv.addEventListener("mousedown", (e) =>
-          handleVerticalDrag(e, workspace, capturedR, capturedGap)
-        );
-        rowElements[r].append(vDiv);
+        if (c > 0) {
+          const vDiv = document.createElement("div");
+          vDiv.className =
+            "grid-divider vertical bg-th-border relative z-[2] transition-[background] duration-150 hover:bg-emerald-400 cursor-col-resize w-1 shrink-0";
+          const capturedR = r;
+          const capturedGap = c - 1;
+          vDiv.addEventListener("mousedown", (e) =>
+            handleVerticalDrag(e, workspace, capturedR, capturedGap)
+          );
+          rowElements[r].append(vDiv);
+        }
+
+        await createWorkspaceSession(workspace, positionedClients[clientIndex], rowElements[r]);
       }
-
-      await createWorkspaceSession(workspace, positionedClients[clientIndex], rowElements[r]);
     }
+  } catch (error) {
+    for (const client of positionedClients) {
+      if (client.sessionId) {
+        destroySession(client.sessionId, { notifyBackend: true });
+      }
+    }
+
+    grid.remove();
+    workspaces.delete(wsId);
+    if (state.activeView === wsId) {
+      switchView("home");
+    } else {
+      renderTabs();
+    }
+    throw error;
   }
 
   renderTabs();
   return workspace;
+}
+
+async function ensureProvidersAvailable(clients) {
+  const providerKeys = clients.map((client) => client.provider);
+  return await validateProviderSelection(providerKeys, { force: true, notify: true });
 }
 
 export async function launchWorkspace() {
@@ -109,13 +133,20 @@ export async function launchWorkspace() {
     command: buildClientCommand(provider, state.wizardInlineArgs[i] || ""),
     cwd,
   }));
-  showStep(1);
 
   dom.launchBtn.disabled = true;
   try {
-    return await createWorkspaceFromClients({ clients });
+    const validation = await ensureProvidersAvailable(clients);
+    if (!validation.ok) {
+      return null;
+    }
+    const workspace = await createWorkspaceFromClients({ clients });
+    showStep(1);
+    return workspace;
   } catch (error) {
     console.error("Launch error:", error);
+    showNotice(error?.message || "Impossibile avviare il workspace.", { type: "error" });
+    return null;
   } finally {
     dom.launchBtn.disabled = false;
   }
@@ -138,7 +169,18 @@ export async function launchWorkspaceFromConfig({ name, providers, cwd, inlineAr
     cwd: cwd || ".",
   }));
 
-  return await createWorkspaceFromClients({ name, clients });
+  const validation = await ensureProvidersAvailable(clients);
+  if (!validation.ok) {
+    return null;
+  }
+
+  try {
+    return await createWorkspaceFromClients({ name, clients });
+  } catch (error) {
+    console.error("Launch config error:", error);
+    showNotice(error?.message || "Impossibile ripristinare il workspace.", { type: "error" });
+    return null;
+  }
 }
 
 export function closeWorkspace(wsId) {
