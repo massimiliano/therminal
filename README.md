@@ -134,7 +134,6 @@ src/index.html         shell UI principale
 src/renderer.js        bootstrap del renderer
 src/modules/           moduli UI e logica applicativa
 after-pack.js          hook di packaging
-build.bat              build end-to-end su Windows
 ```
 
 ## Note sui CLI mancanti

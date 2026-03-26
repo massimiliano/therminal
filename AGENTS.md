@@ -1,10 +1,10 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-`main.js` owns the Electron main process: window creation, PTY lifecycle, IPC handlers, presets, and saved sessions. `preload.js` exposes the safe `launcherAPI` bridge. The renderer lives in `src/` with `index.html`, `renderer.js`, `styles.css`, and focused ES modules in `src/modules/` such as `session.js`, `workspace.js`, `wizard.js`, and `service-status.js`. Build helpers live at the root in `after-pack.js` and `build.bat`. Treat `dist/` as generated output.
+`main.js` owns the Electron main process: window creation, PTY lifecycle, IPC handlers, presets, and saved sessions. `preload.js` exposes the safe `launcherAPI` bridge. The renderer lives in `src/` with `index.html`, `renderer.js`, `styles.css`, and focused ES modules in `src/modules/` such as `session.js`, `workspace.js`, `wizard.js`, and `service-status.js`. Packaging helpers live at the root in `after-pack.js`. Treat `dist/` as generated output.
 
 ## Build, Test, and Development Commands
-Use `npm start` or `npm run dev` to launch the app locally. Run `npm run rebuild-pty` after Electron upgrades or when `node-pty` stops loading. Use `npm run build` to create the Windows NSIS installer in `dist/`. On Windows machines with Visual Studio Build Tools, `build.bat` runs the rebuild and package flow end to end.
+Use `npm start` or `npm run dev` to launch the app locally. Run `npm run rebuild-pty` after Electron upgrades or when `node-pty` stops loading. Use `npm run build` to create the Windows NSIS installer in `dist/`. Release builds are produced by GitHub Actions in `.github/workflows/release.yml`.
 
 ## Coding Style & Naming Conventions
 Use 2-space indentation, semicolons, and double quotes. Keep root Electron files in CommonJS and renderer files in ES module style. Prefer small single-purpose modules over large cross-cutting files. Use lowercase kebab-case for renderer module filenames such as `session-state.js` and `usage-panel.js`, `camelCase` for functions and variables, and `UPPER_SNAKE_CASE` for top-level constants.
