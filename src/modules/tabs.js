@@ -188,7 +188,9 @@ export function switchView(viewId) {
   dom.homeView.classList.toggle("hidden", !isHome);
   dom.homeView.classList.toggle("flex", isHome);
   dom.workspaceContainer.classList.toggle("hidden", isHome);
-  dom.workspaceTools.classList.toggle("hidden", isHome);
+  document.querySelectorAll(".workspace-only").forEach((el) => {
+    el.classList.toggle("hidden", isHome);
+  });
 
   if (isHome) {
     dom.workspaceContainer

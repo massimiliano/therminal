@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const { spawnSync } = require("child_process");
+const { spawnSync, spawn } = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -35,6 +35,12 @@ const USAGE_CACHE_TTL_MS = 60000;
 const USAGE_PANEL_CACHE_TTL_MS = 240000;
 const SERVICE_STATUS_CACHE_TTL_MS = 240000;
 const PROVIDER_CACHE_TTL_MS = 15000;
+const DEFAULT_VOICE_CONFIG = Object.freeze({
+  whisperCliPath: "",
+  modelPath: "",
+  language: "it",
+  autoSubmit: false
+});
 
 // ─── CPU Metrics ────────────────────────────────────────
 let prevCpuInfo = null;
@@ -176,6 +182,224 @@ function getPresetsPath() {
 
 function getSessionPath() {
   return path.join(app.getPath("userData"), "session.json");
+}
+
+function getVoiceConfigPath() {
+  return path.join(app.getPath("userData"), "voice-config.json");
+}
+
+function normalizeVoiceConfig(payload = {}) {
+  const language =
+    typeof payload.language === "string" && payload.language.trim().length > 0
+      ? payload.language.trim()
+      : DEFAULT_VOICE_CONFIG.language;
+
+  return {
+    whisperCliPath:
+      typeof payload.whisperCliPath === "string" ? payload.whisperCliPath.trim() : "",
+    modelPath: typeof payload.modelPath === "string" ? payload.modelPath.trim() : "",
+    language,
+    autoSubmit: Boolean(payload.autoSubmit)
+  };
+}
+
+function loadVoiceConfigFile() {
+  try {
+    const configPath = getVoiceConfigPath();
+    if (fs.existsSync(configPath)) {
+      return normalizeVoiceConfig(JSON.parse(fs.readFileSync(configPath, "utf8")));
+    }
+  } catch {}
+
+  return { ...DEFAULT_VOICE_CONFIG };
+}
+
+function saveVoiceConfigFile(payload) {
+  const normalized = normalizeVoiceConfig(payload);
+  fs.writeFileSync(getVoiceConfigPath(), JSON.stringify(normalized, null, 2), "utf8");
+  return normalized;
+}
+
+function assertExistingFile(filePath, label) {
+  if (typeof filePath !== "string" || filePath.trim().length === 0) {
+    throw new Error(`${label} non configurato.`);
+  }
+
+  const resolved = path.resolve(filePath.trim());
+
+  if (!fs.existsSync(resolved)) {
+    throw new Error(`${label} non trovato: ${resolved}`);
+  }
+
+  return resolved;
+}
+
+function toBuffer(value) {
+  if (Buffer.isBuffer(value)) {
+    return value;
+  }
+
+  if (value instanceof Uint8Array) {
+    return Buffer.from(value);
+  }
+
+  if (value instanceof ArrayBuffer) {
+    return Buffer.from(new Uint8Array(value));
+  }
+
+  if (Array.isArray(value)) {
+    return Buffer.from(value);
+  }
+
+  throw new Error("Payload audio non valido.");
+}
+
+function cleanupFiles(filePaths) {
+  for (const filePath of filePaths) {
+    if (!filePath) {
+      continue;
+    }
+
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch {
+      // Ignore temp file cleanup issues.
+    }
+  }
+}
+
+function parseWhisperStdout(stdout) {
+  return String(stdout || "")
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\[[^\]]+\]\s*/, "").trim())
+    .filter(
+      (line) =>
+        line &&
+        !line.startsWith("whisper_") &&
+        !line.startsWith("main:") &&
+        !line.startsWith("system_info:")
+    )
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeTranscriptionText(text) {
+  const normalized = String(text || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) {
+    return "";
+  }
+
+  const withoutBracketOnlyTokens = normalized
+    .replace(/(?:^|\s)[\[(][^\])]{1,40}[\])](?=\s|$)/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const lowerValue = withoutBracketOnlyTokens.toLowerCase();
+  if (
+    !withoutBracketOnlyTokens ||
+    lowerValue === "musica" ||
+    lowerValue === "music" ||
+    lowerValue === "applausi" ||
+    lowerValue === "applause"
+  ) {
+    return "";
+  }
+
+  return withoutBracketOnlyTokens;
+}
+
+async function transcribeWithLocalWhisper(audioBuffer) {
+  const config = loadVoiceConfigFile();
+  const whisperCliPath = assertExistingFile(config.whisperCliPath, "whisper-cli");
+  const modelPath = assertExistingFile(config.modelPath, "Modello Whisper");
+  const tempBase = path.join(app.getPath("temp"), `therminal-stt-${crypto.randomUUID()}`);
+  const audioPath = `${tempBase}.wav`;
+  const outputBase = `${tempBase}-result`;
+  const outputTextPath = `${outputBase}.txt`;
+  const args = [
+    "-m",
+    modelPath,
+    "-f",
+    audioPath,
+    "-otxt",
+    "-of",
+    outputBase,
+    "-nt",
+    "-np",
+    "-sns",
+    "-nth",
+    "0.35"
+  ];
+
+  if (config.language && config.language.toLowerCase() !== "auto") {
+    args.push("-l", config.language);
+  }
+
+  fs.writeFileSync(audioPath, toBuffer(audioBuffer));
+
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const child = spawn(whisperCliPath, args, {
+        windowsHide: true,
+        shell: false
+      });
+
+      let stdout = "";
+      let stderr = "";
+
+      child.stdout.on("data", (chunk) => {
+        stdout += chunk.toString();
+      });
+
+      child.stderr.on("data", (chunk) => {
+        stderr += chunk.toString();
+      });
+
+      child.on("error", (error) => reject(error));
+      child.on("close", (code) => resolve({ code, stdout, stderr }));
+    });
+
+    const rawText = fs.existsSync(outputTextPath)
+      ? fs.readFileSync(outputTextPath, "utf8").replace(/\s+/g, " ").trim()
+      : parseWhisperStdout(result.stdout);
+
+    if (result.code !== 0) {
+      throw new Error((result.stderr || result.stdout || "Trascrizione fallita.").trim());
+    }
+
+    return {
+      text: normalizeTranscriptionText(rawText),
+      language: config.language,
+      autoSubmit: config.autoSubmit
+    };
+  } finally {
+    cleanupFiles([audioPath, outputTextPath, `${outputBase}.srt`, `${outputBase}.vtt`, `${outputBase}.csv`, `${outputBase}.json`]);
+  }
+}
+
+async function showOpenFileDialog(event, payload = {}) {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  const result = await dialog.showOpenDialog(win || undefined, {
+    title: payload.title || "Seleziona file",
+    defaultPath:
+      typeof payload.defaultPath === "string" && payload.defaultPath.trim().length > 0
+        ? payload.defaultPath.trim()
+        : undefined,
+    filters: Array.isArray(payload.filters) ? payload.filters : undefined,
+    properties: ["openFile"]
+  });
+
+  if (result.canceled || !Array.isArray(result.filePaths) || result.filePaths.length === 0) {
+    return null;
+  }
+
+  return result.filePaths[0];
 }
 
 function loadPresetsFile() {
@@ -1855,6 +2079,10 @@ ipcMain.handle("dialog:open-directory", async (event, payload = {}) => {
   return result.filePaths[0];
 });
 
+ipcMain.handle("dialog:open-file", async (event, payload = {}) => {
+  return await showOpenFileDialog(event, payload);
+});
+
 ipcMain.handle("dialog:save-file", async (event, { defaultFilename, content }) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   const result = await dialog.showSaveDialog(win, {
@@ -1875,4 +2103,12 @@ ipcMain.handle("clipboard:read-text", () => clipboard.readText());
 ipcMain.handle("clipboard:write-text", (_event, text) => {
   clipboard.writeText(typeof text === "string" ? text : "");
   return true;
+});
+
+ipcMain.handle("voice:get-config", () => loadVoiceConfigFile());
+ipcMain.handle("voice:save-config", (_event, payload) => {
+  return saveVoiceConfigFile(payload);
+});
+ipcMain.handle("voice:transcribe", async (_event, payload = {}) => {
+  return await transcribeWithLocalWhisper(payload.audioData);
 });

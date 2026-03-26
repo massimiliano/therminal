@@ -3,7 +3,7 @@ import { dom } from "./dom.js";
 import { queueFit } from "./helpers.js";
 import { switchView } from "./tabs.js";
 import { buildStep2, showStep } from "./wizard.js";
-import { launchWorkspace } from "./workspace.js";
+import { addTerminalToActiveWorkspace, launchWorkspace } from "./workspace.js";
 import { saveCurrentAsPreset, confirmSavePreset, saveWorkspaceAsPreset, loadPresets } from "./presets.js";
 import { toggleBroadcast, sendBroadcast } from "./broadcast.js";
 import { changeFontSize } from "./fontsize.js";
@@ -65,6 +65,22 @@ export function bindIpcEvents() {
 }
 
 export function bindUiEvents() {
+  function closeAddTerminalMenu() {
+    dom.addTerminalMenu?.classList.add("hidden");
+  }
+
+  function syncAddTerminalMenuState() {
+    if (!dom.addTerminalMenu) return;
+
+    dom.addTerminalMenu.querySelectorAll("[data-provider]").forEach((button) => {
+      const providerKey = button.dataset.provider;
+      const isUnavailable = providerCatalog[providerKey]?.available === false;
+      button.disabled = isUnavailable;
+      button.classList.toggle("opacity-40", isUnavailable);
+      button.classList.toggle("cursor-not-allowed", isUnavailable);
+    });
+  }
+
   dom.appNoticeCloseBtn?.addEventListener("click", () => hideNotice());
   dom.providerStatusCloseBtn?.addEventListener("click", () => dismissProviderAvailabilityBanner());
 
@@ -105,6 +121,33 @@ export function bindUiEvents() {
   dom.backBtn.addEventListener("click", () => showStep(1));
   dom.launchBtn.addEventListener("click", () => launchWorkspace());
   dom.savePresetBtn.addEventListener("click", () => saveCurrentAsPreset());
+
+  dom.addTerminalBtn?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    syncAddTerminalMenuState();
+    dom.addTerminalMenu?.classList.toggle("hidden");
+  });
+
+  dom.addTerminalMenu?.querySelectorAll("[data-provider]").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      closeAddTerminalMenu();
+      const provider = button.dataset.provider;
+      if (provider) {
+        await addTerminalToActiveWorkspace(provider);
+      }
+    });
+  });
+
+  document.addEventListener("mousedown", (event) => {
+    if (
+      dom.addTerminalWrap &&
+      !dom.addTerminalWrap.classList.contains("hidden") &&
+      !dom.addTerminalWrap.contains(event.target)
+    ) {
+      closeAddTerminalMenu();
+    }
+  });
 
   dom.broadcastToggle.addEventListener("click", () => toggleBroadcast());
   dom.broadcastInput.addEventListener("keydown", (e) => {

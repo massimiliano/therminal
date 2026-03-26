@@ -37,8 +37,14 @@ contextBridge.exposeInMainWorld("launcherAPI", {
   // Shell & dialog
   openExternal: (url) => ipcRenderer.invoke("shell:open-external", url),
   openDirectoryDialog: (defaultPath) => ipcRenderer.invoke("dialog:open-directory", { defaultPath }),
+  openFileDialog: (payload = {}) => ipcRenderer.invoke("dialog:open-file", payload),
   readClipboardText: () => ipcRenderer.invoke("clipboard:read-text"),
   writeClipboardText: (text) => ipcRenderer.invoke("clipboard:write-text", text),
   saveLogFile: (defaultFilename, content) =>
     ipcRenderer.invoke("dialog:save-file", { defaultFilename, content }),
+
+  // Voice to text
+  getVoiceConfig: () => ipcRenderer.invoke("voice:get-config"),
+  saveVoiceConfig: (payload) => ipcRenderer.invoke("voice:save-config", payload),
+  transcribeVoice: (audioData) => ipcRenderer.invoke("voice:transcribe", { audioData }),
 });

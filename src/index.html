@@ -68,6 +68,81 @@
 
       <div id="tabBarTools" class="flex items-center gap-1">
         <div id="monitorWidget" class="flex items-center gap-0.5 mr-1"></div>
+        <div class="workspace-only hidden w-px h-4 bg-zinc-800 mx-0.5"></div>
+        <span
+          id="voiceToolbarBadge"
+          class="workspace-only hidden inline-flex items-center gap-1 rounded-full border border-zinc-700/60 bg-th-body px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 select-none"
+          title="Voice to text locale"
+        >
+          <i class="bi bi-mic text-[11px]"></i>
+          <span id="voiceToolbarText">Voice off</span>
+        </span>
+        <div class="workspace-only hidden w-px h-4 bg-zinc-800 mx-0.5"></div>
+        <button
+          id="saveSessionBtn"
+          class="workspace-only hidden flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
+          title="Salva sessione"
+        >
+          <i class="bi bi-save"></i>
+          <span>Salva</span>
+        </button>
+        <div class="workspace-only hidden w-px h-4 bg-zinc-800 mx-0.5"></div>
+        <div id="addTerminalWrap" class="workspace-only hidden relative">
+          <button
+            id="addTerminalBtn"
+            class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
+            title="Aggiungi terminale al workspace"
+          >
+            <i class="bi bi-plus-square"></i>
+            <span>Aggiungi</span>
+          </button>
+          <div
+            id="addTerminalMenu"
+            class="hidden absolute top-[calc(100%+8px)] right-0 z-[220] min-w-[220px] rounded-xl border border-th-border-lt bg-th-card p-1.5 shadow-[0_16px_48px_rgba(0,0,0,0.45)]"
+          >
+            <button
+              type="button"
+              data-provider="codex"
+              class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
+            >
+              <i class="bi bi-cpu text-blue-400"></i>
+              <span>Codex</span>
+            </button>
+            <button
+              type="button"
+              data-provider="claude"
+              class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
+            >
+              <i class="bi bi-stars text-amber-400"></i>
+              <span>Claude</span>
+            </button>
+            <button
+              type="button"
+              data-provider="gemini"
+              class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
+            >
+              <i class="bi bi-gem text-violet-400"></i>
+              <span>Gemini</span>
+            </button>
+            <button
+              type="button"
+              data-provider="terminal"
+              class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
+            >
+              <i class="bi bi-terminal text-emerald-400"></i>
+              <span>Terminale</span>
+            </button>
+          </div>
+        </div>
+        <div class="workspace-only hidden w-px h-4 bg-zinc-800 mx-0.5"></div>
+        <button
+          id="broadcastToggle"
+          class="workspace-only hidden flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
+          title="Broadcast a tutti (Ctrl+Shift+B)"
+        >
+          <i class="bi bi-broadcast"></i>
+          <span>Broadcast</span>
+        </button>
         <div class="w-px h-4 bg-zinc-800 mx-0.5"></div>
         <button
           id="shortcutsToggle"
@@ -75,28 +150,16 @@
           title="Scorciatoie e info (Ctrl+/)"
         >
           <i class="bi bi-keyboard"></i>
+          <span>Scorciatoie</span>
         </button>
-        <div id="workspaceTools" class="flex items-center gap-1 hidden">
-          <div class="w-px h-4 bg-zinc-800 mx-0.5"></div>
-          <button
-            id="saveSessionBtn"
-            class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
-            title="Salva sessione"
-          >
-            <i class="bi bi-save"></i>
-          </button>
-          <div class="w-px h-4 bg-zinc-800 mx-0.5"></div>
-          <button
-            id="broadcastToggle"
-            class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
-            title="Broadcast a tutti (Ctrl+Shift+B)"
-          >
-            <i class="bi bi-broadcast"></i>
-          </button>
-          <div class="w-px h-4 bg-zinc-800 mx-0.5"></div>
+        <div class="workspace-only hidden w-px h-4 bg-zinc-800 mx-0.5"></div>
+        <div class="workspace-only hidden flex items-center gap-1.5 px-2">
+          <span class="text-[10px] font-medium uppercase tracking-wide text-zinc-500 select-none">
+            Font
+          </span>
           <button
             id="fontMinus"
-            class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
+            class="flex items-center gap-1.5 px-2 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
             title="Riduci font (Ctrl+-)"
           >
             <i class="bi bi-dash"></i>
@@ -108,7 +171,7 @@
           >
           <button
             id="fontPlus"
-            class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
+            class="flex items-center gap-1.5 px-2 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
             title="Aumenta font (Ctrl+=)"
           >
             <i class="bi bi-plus"></i>
@@ -470,6 +533,126 @@
                 <kbd>Ctrl</kbd><span class="text-zinc-700">+</span
                 ><kbd>Shift</kbd><span class="text-zinc-700">+</span
                 ><kbd>B</kbd>
+              </div>
+            </div>
+            <div class="flex items-center justify-between py-[5px]">
+              <span class="text-sm text-zinc-400"
+                >Push-to-talk locale</span
+              >
+              <div class="flex items-center gap-1 text-[11px] text-zinc-500">
+                <kbd>Shift</kbd><span class="text-zinc-700">+</span
+                ><kbd>Alt</kbd><span class="text-zinc-700">+</span
+                ><kbd>Z</kbd>
+              </div>
+            </div>
+          </section>
+
+          <div class="h-px bg-th-border my-3"></div>
+
+          <section class="mb-4">
+            <div class="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3
+                  class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest"
+                >
+                  Voice To Text Locale
+                </h3>
+                <p class="text-xs text-zinc-500 mt-1">
+                  Configura un binario compatibile con whisper.cpp e un modello locale leggero.
+                </p>
+              </div>
+              <span
+                id="voiceStatusBadge"
+                class="inline-flex items-center gap-1.5 rounded-full border border-zinc-700/60 bg-th-body px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-400"
+              >
+                <span id="voiceStatusDot" class="inline-block w-1.5 h-1.5 rounded-full bg-zinc-500"></span>
+                <span id="voiceStatusLabel">Non configurato</span>
+              </span>
+            </div>
+
+            <p id="voiceStatusText" class="text-xs text-zinc-500 leading-relaxed mb-3">
+              Seleziona `whisper-cli.exe` e un modello `.bin`. Poi tieni premuto Shift+Alt+Z per registrare e rilascia per trascrivere nella sessione attiva.
+            </p>
+
+            <div class="flex flex-col gap-3">
+              <label class="block">
+                <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                  Binario whisper.cpp
+                </span>
+                <div class="flex items-center gap-2">
+                  <input
+                    id="voiceWhisperPathInput"
+                    type="text"
+                    placeholder="Percorso di whisper-cli.exe"
+                    class="flex-1 min-w-0 bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-xs font-mono text-th-fg outline-none focus:border-emerald-400/35"
+                  />
+                  <button
+                    id="voicePickBinaryBtn"
+                    type="button"
+                    class="shrink-0 rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
+                  >
+                    Sfoglia
+                  </button>
+                </div>
+              </label>
+
+              <label class="block">
+                <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                  Modello locale
+                </span>
+                <div class="flex items-center gap-2">
+                  <input
+                    id="voiceModelPathInput"
+                    type="text"
+                    placeholder="Percorso del modello .bin"
+                    class="flex-1 min-w-0 bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-xs font-mono text-th-fg outline-none focus:border-emerald-400/35"
+                  />
+                  <button
+                    id="voicePickModelBtn"
+                    type="button"
+                    class="shrink-0 rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
+                  >
+                    Sfoglia
+                  </button>
+                </div>
+              </label>
+
+              <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,180px)_1fr] gap-3">
+                <label class="block">
+                  <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                    Lingua
+                  </span>
+                  <input
+                    id="voiceLanguageInput"
+                    type="text"
+                    placeholder="it oppure auto"
+                    class="w-full bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-xs font-mono text-th-fg outline-none focus:border-emerald-400/35"
+                  />
+                </label>
+
+                <label class="flex items-center gap-2 rounded-xl border border-th-border-lt bg-th-body px-3 py-2.5 mt-[18px]">
+                  <input
+                    id="voiceAutoSubmitCheckbox"
+                    type="checkbox"
+                    class="accent-emerald-500"
+                  />
+                  <span class="text-xs text-zinc-400">
+                    Invia automaticamente `Enter` dopo la trascrizione
+                  </span>
+                </label>
+              </div>
+
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-[11px] text-zinc-600 leading-relaxed">
+                  Per velocita su CPU usa un modello tiny o base. La registrazione resta locale; la trascrizione parte solo al rilascio della shortcut.
+                </p>
+                <button
+                  id="voiceSaveSettingsBtn"
+                  type="button"
+                  class="shrink-0 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-200 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 hover:text-white"
+                >
+                  Salva voice
+                </button>
               </div>
             </div>
           </section>

@@ -94,6 +94,7 @@ L'output viene scritto in `dist/`.
 
 - `Ctrl + /`: apre la modale informazioni e scorciatoie
 - `Ctrl + Shift + B`: attiva il broadcast verso tutti i terminali
+- `Shift + Alt + Z`: push-to-talk locale per voice to text nella sessione attiva
 - `Ctrl + -`: riduce il font
 - `Ctrl + =`: aumenta il font
 - `Esc`: chiude modali e broadcast bar quando aperti
@@ -124,6 +125,20 @@ L'output viene scritto in `dist/`.
 - riepilogo scorciatoie
 - descrizione funzioni principali
 - stato del rilevamento provider anche se il banner home e stato chiuso
+- configurazione voice to text locale con `whisper.cpp`
+
+## Voice To Text Locale
+
+Therminal puo usare un binario locale compatibile con `whisper.cpp` per dettare testo senza cloud:
+
+1. Apri la modale scorciatoie con `Ctrl + /`.
+2. Imposta il path di `whisper-cli.exe`.
+3. Imposta il path del modello `.bin`.
+4. Scegli la lingua (`it` oppure `auto`) e se inviare `Enter` in automatico.
+5. Salva la configurazione.
+6. In un workspace attivo tieni premuto `Shift + Alt + Z`, parla e rilascia per trascrivere.
+
+Suggerimento pratico: per velocita su CPU Windows conviene partire da un modello `tiny` o `base`.
 
 ## Struttura del progetto
 
