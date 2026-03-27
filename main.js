@@ -1,10 +1,33 @@
 const crypto = require("crypto");
 const { spawnSync, spawn } = require("child_process");
 const fs = require("fs");
+const net = require("net");
 const os = require("os");
 const path = require("path");
 const { app, BrowserWindow, ipcMain, shell, dialog, globalShortcut, clipboard } = require("electron");
 const pty = require("node-pty");
+
+function configureSessionDataPath() {
+  if (app.isPackaged) {
+    return;
+  }
+
+  const sessionDataPath = path.join(
+    app.getPath("temp"),
+    "therminal-dev-session-data",
+    String(process.pid)
+  );
+
+  fs.mkdirSync(sessionDataPath, { recursive: true });
+  app.setPath("sessionData", sessionDataPath);
+}
+
+configureSessionDataPath();
+
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+if (!hasSingleInstanceLock) {
+  app.quit();
+}
 
 const PROVIDERS = Object.freeze({
   claude: {
@@ -40,6 +63,34 @@ const DEFAULT_VOICE_CONFIG = Object.freeze({
   modelPath: "",
   language: "it",
   autoSubmit: false
+});
+const WHISPER_SERVER_HOST = "127.0.0.1";
+const WHISPER_SERVER_READY_TIMEOUT_MS = 25000;
+const WHISPER_SERVER_REQUEST_TIMEOUT_MS = 120000;
+const WHISPER_SERVER_POLL_INTERVAL_MS = 250;
+const WHISPER_SERVER_MAX_TRANSCRIBE_ATTEMPTS = 4;
+const WHISPER_SERVER_LOG_TAIL_LIMIT = 4000;
+let whisperServerRuntime = createWhisperServerRuntime();
+
+app.on("second-instance", () => {
+  if (!app.isReady()) {
+    return;
+  }
+
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createMainWindow();
+    return;
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
+  if (!mainWindow.isVisible()) {
+    mainWindow.show();
+  }
+
+  mainWindow.focus();
 });
 
 // ─── CPU Metrics ────────────────────────────────────────
@@ -215,9 +266,269 @@ function loadVoiceConfigFile() {
 }
 
 function saveVoiceConfigFile(payload) {
+  const currentConfig = loadVoiceConfigFile();
   const normalized = normalizeVoiceConfig(payload);
   fs.writeFileSync(getVoiceConfigPath(), JSON.stringify(normalized, null, 2), "utf8");
+  if (getVoiceRuntimeKey(currentConfig) !== getVoiceRuntimeKey(normalized)) {
+    stopWhisperServerRuntime();
+  }
   return normalized;
+}
+
+function isVoiceConfigReady(config = {}) {
+  return Boolean(config?.whisperCliPath && config?.modelPath);
+}
+
+function getVoiceRuntimeKey(payload = {}) {
+  const config = normalizeVoiceConfig(payload);
+  return JSON.stringify([
+    config.whisperCliPath,
+    config.modelPath,
+    String(config.language || DEFAULT_VOICE_CONFIG.language).toLowerCase()
+  ]);
+}
+
+function resolveWhisperServerPath(whisperCliPath) {
+  if (typeof whisperCliPath !== "string" || whisperCliPath.trim().length === 0) {
+    return null;
+  }
+
+  const resolvedCliPath = path.resolve(whisperCliPath.trim());
+  const dir = path.dirname(resolvedCliPath);
+  const ext = path.extname(resolvedCliPath);
+  const baseName = path.basename(resolvedCliPath, ext).toLowerCase();
+  const candidates = [
+    path.join(dir, `whisper-server${ext}`),
+    path.join(dir, `server${ext}`)
+  ];
+
+  if (baseName.includes("cli")) {
+    candidates.unshift(path.join(dir, `${baseName.replace("cli", "server")}${ext}`));
+  }
+
+  for (const candidate of candidates) {
+    if (candidate !== resolvedCliPath && fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function getResolvedVoiceRuntimeConfig(payload = loadVoiceConfigFile()) {
+  const config = normalizeVoiceConfig(payload);
+  const whisperCliPath = assertExistingFile(config.whisperCliPath, "whisper-cli");
+  const modelPath = assertExistingFile(config.modelPath, "Modello Whisper");
+  return {
+    ...config,
+    whisperCliPath,
+    modelPath,
+    whisperServerPath: resolveWhisperServerPath(whisperCliPath),
+    runtimeKey: getVoiceRuntimeKey(config)
+  };
+}
+
+function createWhisperServerRuntime() {
+  return {
+    child: null,
+    baseUrl: "",
+    port: 0,
+    runtimeKey: "",
+    readyPromise: null
+  };
+}
+
+function appendLogTail(currentValue, chunk) {
+  const nextValue = `${currentValue || ""}${String(chunk || "")}`;
+  if (nextValue.length <= WHISPER_SERVER_LOG_TAIL_LIMIT) {
+    return nextValue;
+  }
+  return nextValue.slice(-WHISPER_SERVER_LOG_TAIL_LIMIT);
+}
+
+function stopWhisperServerRuntime() {
+  const child = whisperServerRuntime.child;
+  whisperServerRuntime = createWhisperServerRuntime();
+
+  if (child && !child.killed) {
+    try {
+      child.kill();
+    } catch {
+      // Ignore shutdown issues during cleanup.
+    }
+  }
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function createTimeoutSignal(timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return {
+    signal: controller.signal,
+    clear: () => clearTimeout(timer)
+  };
+}
+
+async function fetchWithTimeout(resource, options = {}, timeoutMs = WHISPER_SERVER_REQUEST_TIMEOUT_MS) {
+  const timeout = createTimeoutSignal(timeoutMs);
+  try {
+    return await fetch(resource, {
+      ...options,
+      signal: timeout.signal
+    });
+  } finally {
+    timeout.clear();
+  }
+}
+
+async function allocateWhisperServerPort() {
+  return await new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.unref();
+    probe.on("error", reject);
+    probe.listen(0, WHISPER_SERVER_HOST, () => {
+      const address = probe.address();
+      const port = typeof address === "object" && address ? address.port : 0;
+      probe.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(port);
+      });
+    });
+  });
+}
+
+function buildWhisperServerArgs(runtimeConfig, port) {
+  const args = [
+    "-m",
+    runtimeConfig.modelPath,
+    "--host",
+    WHISPER_SERVER_HOST,
+    "--port",
+    String(port),
+    "-nt",
+    "-sns",
+    "-nth",
+    "0.35"
+  ];
+
+  if (runtimeConfig.language && runtimeConfig.language.toLowerCase() !== "auto") {
+    args.push("-l", runtimeConfig.language);
+  }
+
+  return args;
+}
+
+function getWhisperServerFailureDetails(state) {
+  return [state.stderrTail, state.stdoutTail]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+}
+
+function createWhisperServerError(message, state) {
+  const details = getWhisperServerFailureDetails(state);
+  return new Error(details ? `${message}\n${details}` : message);
+}
+
+async function waitForWhisperServerReady(state) {
+  const deadline = Date.now() + WHISPER_SERVER_READY_TIMEOUT_MS;
+
+  while (Date.now() < deadline) {
+    if (state.startupError) {
+      throw createWhisperServerError(
+        `Avvio di whisper-server fallito: ${state.startupError.message}`,
+        state
+      );
+    }
+
+    if (state.hasExited) {
+      throw createWhisperServerError(
+        `whisper-server si e chiuso prematuramente (code ${state.exitCode ?? "unknown"}).`,
+        state
+      );
+    }
+
+    try {
+      const response = await fetchWithTimeout(state.baseUrl, {}, 1200);
+      if (!shouldRetryWhisperServerResponse(response.status, "")) {
+        return;
+      }
+    } catch {}
+
+    await delay(WHISPER_SERVER_POLL_INTERVAL_MS);
+  }
+
+  throw createWhisperServerError("Timeout durante il caricamento del modello Whisper.", state);
+}
+
+async function ensureWhisperServerRuntime(runtimeConfig) {
+  if (!runtimeConfig.whisperServerPath) {
+    return null;
+  }
+
+  if (
+    whisperServerRuntime.child &&
+    whisperServerRuntime.runtimeKey === runtimeConfig.runtimeKey &&
+    whisperServerRuntime.readyPromise
+  ) {
+    await whisperServerRuntime.readyPromise;
+    return whisperServerRuntime;
+  }
+
+  stopWhisperServerRuntime();
+
+  const port = await allocateWhisperServerPort();
+  const state = {
+    child: null,
+    baseUrl: `http://${WHISPER_SERVER_HOST}:${port}`,
+    port,
+    runtimeKey: runtimeConfig.runtimeKey,
+    readyPromise: null,
+    stdoutTail: "",
+    stderrTail: "",
+    startupError: null,
+    exitCode: null,
+    hasExited: false
+  };
+
+  const child = spawn(runtimeConfig.whisperServerPath, buildWhisperServerArgs(runtimeConfig, port), {
+    windowsHide: true,
+    shell: false
+  });
+
+  state.child = child;
+  state.readyPromise = waitForWhisperServerReady(state);
+  whisperServerRuntime = state;
+
+  child.stdout.on("data", (chunk) => {
+    state.stdoutTail = appendLogTail(state.stdoutTail, chunk.toString());
+  });
+
+  child.stderr.on("data", (chunk) => {
+    state.stderrTail = appendLogTail(state.stderrTail, chunk.toString());
+  });
+
+  child.on("error", (error) => {
+    state.startupError = error;
+  });
+
+  child.on("close", (code) => {
+    state.hasExited = true;
+    state.exitCode = code;
+    if (whisperServerRuntime.child === child) {
+      whisperServerRuntime = createWhisperServerRuntime();
+    }
+  });
+
+  await state.readyPromise;
+  return state;
 }
 
 function assertExistingFile(filePath, label) {
@@ -314,17 +625,14 @@ function normalizeTranscriptionText(text) {
   return withoutBracketOnlyTokens;
 }
 
-async function transcribeWithLocalWhisper(audioBuffer) {
-  const config = loadVoiceConfigFile();
-  const whisperCliPath = assertExistingFile(config.whisperCliPath, "whisper-cli");
-  const modelPath = assertExistingFile(config.modelPath, "Modello Whisper");
+async function transcribeWithWhisperCli(audioBuffer, runtimeConfig) {
   const tempBase = path.join(app.getPath("temp"), `therminal-stt-${crypto.randomUUID()}`);
   const audioPath = `${tempBase}.wav`;
   const outputBase = `${tempBase}-result`;
   const outputTextPath = `${outputBase}.txt`;
   const args = [
     "-m",
-    modelPath,
+    runtimeConfig.modelPath,
     "-f",
     audioPath,
     "-otxt",
@@ -337,15 +645,15 @@ async function transcribeWithLocalWhisper(audioBuffer) {
     "0.35"
   ];
 
-  if (config.language && config.language.toLowerCase() !== "auto") {
-    args.push("-l", config.language);
+  if (runtimeConfig.language && runtimeConfig.language.toLowerCase() !== "auto") {
+    args.push("-l", runtimeConfig.language);
   }
 
   fs.writeFileSync(audioPath, toBuffer(audioBuffer));
 
   try {
     const result = await new Promise((resolve, reject) => {
-      const child = spawn(whisperCliPath, args, {
+      const child = spawn(runtimeConfig.whisperCliPath, args, {
         windowsHide: true,
         shell: false
       });
@@ -375,12 +683,148 @@ async function transcribeWithLocalWhisper(audioBuffer) {
 
     return {
       text: normalizeTranscriptionText(rawText),
-      language: config.language,
-      autoSubmit: config.autoSubmit
+      language: runtimeConfig.language,
+      autoSubmit: runtimeConfig.autoSubmit
     };
   } finally {
     cleanupFiles([audioPath, outputTextPath, `${outputBase}.srt`, `${outputBase}.vtt`, `${outputBase}.csv`, `${outputBase}.json`]);
   }
+}
+
+function shouldRetryWhisperServerResponse(status, body) {
+  if (status === 425 || status === 429 || status === 503) {
+    return true;
+  }
+
+  const normalizedBody = String(body || "").toLowerCase();
+  return normalizedBody.includes("loading") || normalizedBody.includes("busy");
+}
+
+function shouldRetryWhisperServerError(error) {
+  const message = String(error?.message || "").toLowerCase();
+  return (
+    error?.name === "AbortError" ||
+    message.includes("fetch failed") ||
+    message.includes("econnrefused") ||
+    message.includes("socket hang up")
+  );
+}
+
+async function transcribeWithWhisperServer(audioBuffer, runtimeConfig) {
+  const serverState = await ensureWhisperServerRuntime(runtimeConfig);
+  if (!serverState) {
+    throw new Error("whisper-server non disponibile.");
+  }
+
+  let lastError = null;
+
+  for (let attempt = 0; attempt < WHISPER_SERVER_MAX_TRANSCRIBE_ATTEMPTS; attempt += 1) {
+    try {
+      const formData = new FormData();
+      formData.set("file", new Blob([toBuffer(audioBuffer)], { type: "audio/wav" }), "audio.wav");
+      formData.set("response_format", "text");
+
+      const response = await fetchWithTimeout(
+        `${serverState.baseUrl}/inference`,
+        {
+          method: "POST",
+          body: formData
+        },
+        WHISPER_SERVER_REQUEST_TIMEOUT_MS
+      );
+
+      const responseText = (await response.text()).trim();
+      if (response.ok) {
+        return {
+          text: normalizeTranscriptionText(responseText),
+          language: runtimeConfig.language,
+          autoSubmit: runtimeConfig.autoSubmit
+        };
+      }
+
+      const error = new Error(
+        responseText || `Trascrizione con whisper-server fallita (HTTP ${response.status}).`
+      );
+      if (!shouldRetryWhisperServerResponse(response.status, responseText)) {
+        throw error;
+      }
+      lastError = error;
+    } catch (error) {
+      lastError = error;
+      if (!shouldRetryWhisperServerError(error)) {
+        break;
+      }
+    }
+
+    await delay(WHISPER_SERVER_POLL_INTERVAL_MS);
+  }
+
+  throw lastError || new Error("Trascrizione con whisper-server fallita.");
+}
+
+async function warmLocalWhisperModel() {
+  const config = loadVoiceConfigFile();
+  if (!isVoiceConfigReady(config)) {
+    stopWhisperServerRuntime();
+    return {
+      warmed: false,
+      mode: "disabled",
+      persistentAvailable: false
+    };
+  }
+
+  let runtimeConfig;
+  try {
+    runtimeConfig = getResolvedVoiceRuntimeConfig(config);
+  } catch (error) {
+    stopWhisperServerRuntime();
+    return {
+      warmed: false,
+      mode: "invalid",
+      persistentAvailable: false,
+      error: error.message
+    };
+  }
+
+  if (!runtimeConfig.whisperServerPath) {
+    stopWhisperServerRuntime();
+    return {
+      warmed: false,
+      mode: "cli",
+      persistentAvailable: false
+    };
+  }
+
+  try {
+    await ensureWhisperServerRuntime(runtimeConfig);
+    return {
+      warmed: true,
+      mode: "server",
+      persistentAvailable: true
+    };
+  } catch (error) {
+    stopWhisperServerRuntime();
+    return {
+      warmed: false,
+      mode: "cli",
+      persistentAvailable: true,
+      error: error.message
+    };
+  }
+}
+
+async function transcribeWithLocalWhisper(audioBuffer) {
+  const runtimeConfig = getResolvedVoiceRuntimeConfig();
+
+  if (runtimeConfig.whisperServerPath) {
+    try {
+      return await transcribeWithWhisperServer(audioBuffer, runtimeConfig);
+    } catch {
+      stopWhisperServerRuntime();
+    }
+  }
+
+  return await transcribeWithWhisperCli(audioBuffer, runtimeConfig);
 }
 
 async function showOpenFileDialog(event, payload = {}) {
@@ -1881,7 +2325,8 @@ function createMainWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      webviewTag: true
     }
   });
 
@@ -1926,31 +2371,34 @@ function createMainWindow() {
   return mainWindow;
 }
 
-app.whenReady().then(() => {
-  createMainWindow();
+if (hasSingleInstanceLock) {
+  app.whenReady().then(() => {
+    createMainWindow();
 
-  // Quake-style global toggle: Ctrl+`
-  globalShortcut.register("CommandOrControl+`", () => {
-    if (!mainWindow) {
-      createMainWindow();
-      return;
-    }
-    if (mainWindow.isVisible() && mainWindow.isFocused()) {
-      mainWindow.hide();
-    } else {
-      mainWindow.show();
-      mainWindow.focus();
-    }
-  });
+    // Quake-style global toggle: Ctrl+`
+    globalShortcut.register("CommandOrControl+`", () => {
+      if (!mainWindow) {
+        createMainWindow();
+        return;
+      }
+      if (mainWindow.isVisible() && mainWindow.isFocused()) {
+        mainWindow.hide();
+      } else {
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    });
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createMainWindow();
-    }
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createMainWindow();
+      }
+    });
   });
-});
+}
 
 app.on("before-quit", () => {
+  stopWhisperServerRuntime();
   closeAllSessions();
 });
 
@@ -2205,6 +2653,9 @@ ipcMain.handle("clipboard:write-text", (_event, text) => {
 ipcMain.handle("voice:get-config", () => loadVoiceConfigFile());
 ipcMain.handle("voice:save-config", (_event, payload) => {
   return saveVoiceConfigFile(payload);
+});
+ipcMain.handle("voice:warmup", async () => {
+  return await warmLocalWhisperModel();
 });
 ipcMain.handle("voice:transcribe", async (_event, payload = {}) => {
   return await transcribeWithLocalWhisper(payload.audioData);

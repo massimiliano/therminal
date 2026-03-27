@@ -87,7 +87,10 @@ export function buildCountOptions() {
 
     card.addEventListener("click", async () => {
       try {
-        await refreshProviderCatalog(true);
+        if (Object.keys(providerCatalog).length === 0) {
+          await refreshProviderCatalog();
+        }
+
         state.wizardClientCount = count;
         const defaultProvider = getFirstAvailableProvider();
         state.wizardProviders = new Array(count).fill(defaultProvider);
@@ -95,6 +98,14 @@ export function buildCountOptions() {
         state.wizardBulkInlineArgs = {};
         buildStep2();
         showStep(2);
+
+        void refreshProviderCatalog().then(() => {
+          if (state.wizardStep === 2 && state.wizardClientCount === count) {
+            buildStep2();
+          }
+        }).catch((error) => {
+          console.error("Provider refresh after step switch failed:", error);
+        });
       } catch (error) {
         console.error("Provider preload failed:", error);
         showNotice("Impossibile rilevare i provider CLI disponibili.", { type: "error" });
@@ -342,7 +353,7 @@ export function renderClientGrid() {
         : state.wizardClientCount <= 8
           ? 4
           : 4;
-  dom.clientGrid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  dom.clientGrid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
   dom.clientGrid.innerHTML = "";
 
   for (let i = 0; i < state.wizardClientCount; i++) {
@@ -352,12 +363,13 @@ export function renderClientGrid() {
 
     const card = document.createElement("div");
     card.className = isSelectedUnavailable
-      ? "flex flex-col items-center px-2.5 py-3 bg-th-card border border-red-500/30 rounded-xl gap-2 min-w-0 transition-[border-color,box-shadow] duration-200"
-      : `flex flex-col items-center px-2.5 py-3 bg-th-card border rounded-xl gap-2 min-w-0 transition-[border-color,box-shadow] duration-200 ${PROVIDER_STYLE[selectedKey]?.card || "border-th-border"}`;
+      ? "flex flex-col items-stretch px-2.5 py-3 bg-th-card border border-red-500/30 rounded-xl gap-2 min-w-0 transition-[border-color,box-shadow] duration-200"
+      : `flex flex-col items-stretch px-2.5 py-3 bg-th-card border rounded-xl gap-2 min-w-0 transition-[border-color,box-shadow] duration-200 ${PROVIDER_STYLE[selectedKey]?.card || "border-th-border"}`;
 
     const label = document.createElement("span");
     label.className = "text-[11px] font-bold text-zinc-600 tracking-wide";
     label.textContent = `#${i + 1}`;
+    label.style.alignSelf = "center";
 
     const options = document.createElement("div");
     options.className = "grid gap-1 w-full";

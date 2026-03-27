@@ -41,7 +41,7 @@ export function handleVerticalDrag(e, workspace, rowIndex, gapIndex) {
     sizes[gapIndex] = newA;
     sizes[gapIndex + 1] = newB;
     applyRowColFlex(workspace, rowIndex);
-    refitWorkspace(workspace);
+    refitWorkspace(workspace, { backend: "debounced" });
   }
 
   function onUp() {
@@ -50,6 +50,7 @@ export function handleVerticalDrag(e, workspace, rowIndex, gapIndex) {
     dividerEl.classList.remove("active");
     document.body.classList.remove("dragging");
     document.body.style.cursor = "";
+    refitWorkspace(workspace, { backend: "immediate" });
   }
 
   document.addEventListener("mousemove", onMove);
@@ -96,7 +97,7 @@ export function handleHorizontalDrag(e, workspace, gapIndex) {
     sizes[gapIndex] = newA;
     sizes[gapIndex + 1] = newB;
     applyRowHeights(workspace);
-    refitWorkspace(workspace);
+    refitWorkspace(workspace, { backend: "debounced" });
   }
 
   function onUp() {
@@ -105,6 +106,7 @@ export function handleHorizontalDrag(e, workspace, gapIndex) {
     dividerEl.classList.remove("active");
     document.body.classList.remove("dragging");
     document.body.style.cursor = "";
+    refitWorkspace(workspace, { backend: "immediate" });
   }
 
   document.addEventListener("mousemove", onMove);

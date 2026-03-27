@@ -47,5 +47,6 @@ contextBridge.exposeInMainWorld("launcherAPI", {
   // Voice to text
   getVoiceConfig: () => ipcRenderer.invoke("voice:get-config"),
   saveVoiceConfig: (payload) => ipcRenderer.invoke("voice:save-config", payload),
+  warmVoiceModel: () => ipcRenderer.invoke("voice:warmup"),
   transcribeVoice: (audioData) => ipcRenderer.invoke("voice:transcribe", { audioData }),
 });

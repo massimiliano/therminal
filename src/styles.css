@@ -43,11 +43,12 @@ kbd {
 
 /* Drag states (toggled by JS) */
 .terminal-cell.drag-source {
-  opacity: 0.4;
+  opacity: 0.45;
+  box-shadow: 0 0 0 1px rgba(52, 211, 153, 0.28), 0 16px 36px rgba(0, 0, 0, 0.3);
 }
 
-.terminal-cell.drag-over {
-  box-shadow: inset 0 0 0 2px #34d399;
+.terminal-cell.drag-target {
+  box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.28), 0 16px 36px rgba(0, 0, 0, 0.22);
 }
 
 /* Terminal cell ended state */
@@ -55,14 +56,179 @@ kbd {
   border-bottom-color: #7f1d1d40;
 }
 
-/* Drag cursor override */
-body.dragging {
+/* Drag / resize cursor override */
+body.session-dragging,
+body.layout-resizing {
   user-select: none !important;
   cursor: inherit;
 }
 
-body.dragging * {
+body.session-dragging *,
+body.layout-resizing * {
   cursor: inherit !important;
+}
+
+.workspace-grid {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+}
+
+.workspace-leaf {
+  flex: 1 1 0%;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.workspace-pane-slot {
+  flex: 1 1 0%;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.terminal-cell.drop-target-active .pane-drop-zones {
+  opacity: 1;
+}
+
+.pane-drop-zones {
+  position: absolute;
+  inset: 12px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 7;
+  transition: opacity 0.14s ease;
+}
+
+.pane-drop-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed rgba(52, 211, 153, 0.24);
+  background: rgba(15, 17, 20, 0.76);
+  color: #d4d4d8;
+  border-radius: 14px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease,
+    transform 0.12s ease;
+}
+
+.pane-drop-zone i {
+  font-size: 15px;
+  opacity: 0.9;
+}
+
+.pane-drop-zone span {
+  display: block;
+  line-height: 1.1;
+}
+
+.pane-drop-zone:hover,
+.pane-drop-zone.active {
+  border-color: rgba(52, 211, 153, 0.7);
+  background: rgba(16, 185, 129, 0.18);
+  color: #ecfdf5;
+  transform: translateY(-1px);
+}
+
+.pane-drop-zone.zone-top {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(220px, calc(100% - 48px));
+  min-height: 58px;
+  transform: translateX(-50%);
+}
+
+.pane-drop-zone.zone-left {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: min(132px, 26%);
+  height: min(180px, calc(100% - 170px));
+  min-height: 120px;
+  flex-direction: column;
+  transform: translateY(-50%);
+}
+
+.pane-drop-zone.zone-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(168px, 34%);
+  height: min(220px, calc(100% - 150px));
+  min-height: 150px;
+  flex-direction: column;
+  border-style: solid;
+  font-size: 11px;
+  background: rgba(24, 24, 27, 0.88);
+  transform: translate(-50%, -50%);
+}
+
+.pane-drop-zone.zone-right {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: min(132px, 26%);
+  height: min(180px, calc(100% - 170px));
+  min-height: 120px;
+  flex-direction: column;
+  transform: translateY(-50%);
+}
+
+.pane-drop-zone.zone-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: min(220px, calc(100% - 48px));
+  min-height: 58px;
+  transform: translateX(-50%);
+}
+
+.pane-drop-zone.zone-top.active {
+  transform: translateX(-50%) translateY(-1px);
+}
+
+.pane-drop-zone.zone-bottom.active {
+  transform: translateX(-50%) translateY(-1px);
+}
+
+.pane-drop-zone.zone-left.active,
+.pane-drop-zone.zone-right.active {
+  transform: translateY(-50%) translateY(-1px);
+}
+
+.pane-drop-zone.zone-center.active {
+  transform: translate(-50%, -50%) translateY(-1px);
+}
+
+.pane-split-action {
+  border: 1px solid transparent;
+}
+
+.pane-split-action:hover {
+  border-color: rgba(52, 211, 153, 0.28);
+}
+
+.add-terminal-dir.is-active {
+  border-color: rgba(52, 211, 153, 0.45);
+  background: rgba(16, 185, 129, 0.14);
+  color: #d1fae5;
+}
+
+.add-terminal-dir:not(.is-active):hover {
+  border-color: rgba(113, 113, 122, 0.9);
+  background: rgba(39, 39, 42, 0.4);
 }
 
 /* Maximize body child terminal */
@@ -109,6 +275,35 @@ body.dragging * {
   .th-skeleton::after {
     animation: none;
   }
+}
+
+.th-accordion summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.th-accordion summary::-webkit-details-marker {
+  display: none;
+}
+
+.th-accordion .th-accordion-chevron {
+  transition: transform 0.18s ease;
+}
+
+.th-accordion[open] .th-accordion-chevron {
+  transform: rotate(180deg);
+}
+
+.browser-webview-wrap {
+  position: relative;
+}
+
+.browser-webview {
+  display: inline-flex;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  background: #0f1114;
 }
 
 .xterm {

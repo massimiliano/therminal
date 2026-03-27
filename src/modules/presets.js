@@ -4,6 +4,21 @@ import { launchWorkspace, launchWorkspaceFromConfig } from "./workspace.js";
 import { updateSavedSection } from "./helpers.js";
 import { extractInlineArgs, normalizeInlineArgs } from "./cli-options.js";
 import { getUnavailableProviders, getProviderLabel } from "./providers.js";
+import { openNameModal } from "./name-modal.js";
+
+function getConfigClients(config) {
+  if (Array.isArray(config?.clients) && config.clients.length > 0) {
+    return config.clients;
+  }
+
+  const providers = Array.isArray(config?.providers) ? config.providers : [];
+  return providers.map((provider, index) => ({
+    provider,
+    command: Array.isArray(config?.commands) ? config.commands[index] : "",
+    inlineArgs: Array.isArray(config?.inlineArgs) ? config.inlineArgs[index] : "",
+    taskStatus: Array.isArray(config?.taskStatuses) ? config.taskStatuses[index] : "todo",
+  }));
+}
 
 function renderPresetLoadingState() {
   dom.presetSection.classList.remove("hidden");
@@ -51,8 +66,8 @@ export async function loadPresets() {
     const desc = document.createElement("span");
     desc.className = "text-[10px] text-zinc-600 font-mono";
     const counts = {};
-    for (const p of config.providers) {
-      counts[p] = (counts[p] || 0) + 1;
+    for (const client of getConfigClients(config)) {
+      counts[client.provider] = (counts[client.provider] || 0) + 1;
     }
     desc.textContent = Object.entries(counts)
       .map(([k, v]) => `${v}\u00D7 ${k}`)
@@ -75,7 +90,7 @@ export async function loadPresets() {
       info.append(handoffHint);
     }
 
-    const unavailable = getUnavailableProviders(config.providers || []);
+    const unavailable = getUnavailableProviders(getConfigClients(config).map((client) => client.provider));
     if (unavailable.length > 0) {
       const warn = document.createElement("span");
       warn.className = "text-[9px] text-red-300 font-medium";
@@ -100,11 +115,11 @@ export async function loadPresets() {
 }
 
 export function saveCurrentAsPreset() {
-  dom.presetNameModal.classList.remove("hidden");
-  dom.presetNameInput.value = "";
-  dom.presetNameInput.placeholder = "Nome del preset...";
-  dom.presetNameModal.dataset.mode = "preset";
-  dom.presetNameInput.focus();
+  openNameModal({
+    mode: "preset",
+    title: "Salva preset",
+    placeholder: "Nome del preset...",
+  });
 }
 
 export async function confirmSavePreset() {
@@ -128,6 +143,15 @@ export async function saveWorkspaceAsPreset(name, workspaceId) {
   const providers = ws.clients.map((client) => client.provider);
   const inlineArgs = ws.clients.map((client) => extractInlineArgs(client.provider, client.command));
   const config = {
+    clients: ws.clients.map((client) => ({
+      id: client.id,
+      provider: client.provider,
+      command: client.command,
+      inlineArgs: extractInlineArgs(client.provider, client.command),
+      taskStatus: client.taskStatus || "todo",
+      cwd: client.cwd || ".",
+    })),
+    layout: ws.layout,
     clientCount: providers.length,
     providers,
     inlineArgs,
@@ -143,9 +167,17 @@ export async function saveWorkspaceAsPreset(name, workspaceId) {
 }
 
 async function launchPreset(config) {
-  if (typeof config.sharedContext === "string" || config.handoff || Array.isArray(config.taskStatuses)) {
+  if (
+    Array.isArray(config.clients) ||
+    config.layout ||
+    typeof config.sharedContext === "string" ||
+    config.handoff ||
+    Array.isArray(config.taskStatuses)
+  ) {
     await launchWorkspaceFromConfig({
       name: config.name,
+      clients: Array.isArray(config.clients) ? config.clients : null,
+      layout: config.layout || null,
       providers: config.providers,
       cwd: config.cwd,
       inlineArgs: Array.isArray(config.inlineArgs) ? config.inlineArgs : null,

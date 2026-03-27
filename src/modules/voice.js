@@ -143,6 +143,35 @@ async function refreshVoiceConfig() {
   renderVoiceStatus();
 }
 
+async function warmVoiceModel({ notify = false } = {}) {
+  if (!window.launcherAPI?.warmVoiceModel || !isVoiceConfigured()) {
+    return null;
+  }
+
+  try {
+    const result = await window.launcherAPI.warmVoiceModel();
+    if (notify && result?.mode === "server" && result?.warmed) {
+      showNotice("Configurazione voice salvata. Modello caricato in background.", {
+        type: "success",
+        timeoutMs: 2800
+      });
+      return result;
+    }
+
+    if (notify && result?.persistentAvailable && result?.error) {
+      showNotice(`Configurazione voice salvata. Warmup non riuscito: ${result.error}`, {
+        type: "warning",
+        timeoutMs: 4200
+      });
+      return result;
+    }
+
+    return result;
+  } catch {
+    return null;
+  }
+}
+
 async function pickVoiceBinary() {
   const selectedPath = await window.launcherAPI.openFileDialog({
     title: "Seleziona whisper-cli.exe",
@@ -177,7 +206,10 @@ async function saveVoiceSettings() {
   voiceConfig = await window.launcherAPI.saveVoiceConfig(getVoiceConfigPayload());
   renderVoiceConfig();
   renderVoiceStatus();
-  showNotice("Configurazione voice salvata.", { type: "success", timeoutMs: 2500 });
+  const warmup = await warmVoiceModel({ notify: true });
+  if (!warmup || (warmup.mode !== "server" && !warmup.error)) {
+    showNotice("Configurazione voice salvata.", { type: "success", timeoutMs: 2500 });
+  }
 }
 
 function matchesPushToTalkShortcut(event) {
@@ -543,4 +575,5 @@ export async function initVoiceToText() {
   await refreshVoiceConfig();
   bindVoiceUi();
   bindPushToTalkShortcut();
+  void warmVoiceModel();
 }

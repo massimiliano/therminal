@@ -13,17 +13,19 @@ import { toggleShortcutsModal } from "./shortcuts.js";
 import { saveSessionAs, collectSessionState, loadSessionsUI } from "./session-state.js";
 import { hideNotice, showNotice } from "./notices.js";
 import { dismissProviderAvailabilityBanner, refreshProviderCatalog } from "./providers.js";
+import { closeNameModal, openNameModal } from "./name-modal.js";
+import { initAddTerminalMenu, openAddTerminalMenu } from "./add-terminal-menu.js";
 
 export function bindIpcEvents() {
   window.launcherAPI.onSessionData((payload) => {
     const s = sessionStore.get(payload.id);
-    if (!s) return;
+    if (!s || s.provider === "browser") return;
     s.terminal.write(payload.data);
   });
 
   window.launcherAPI.onSessionExit((payload) => {
     const s = sessionStore.get(payload.id);
-    if (!s) return;
+    if (!s || s.provider === "browser") return;
 
     const exitCode = typeof payload.exitCode === "number" ? payload.exitCode : "?";
     s.info.textContent += ` (exit ${exitCode})`;
@@ -65,22 +67,6 @@ export function bindIpcEvents() {
 }
 
 export function bindUiEvents() {
-  function closeAddTerminalMenu() {
-    dom.addTerminalMenu?.classList.add("hidden");
-  }
-
-  function syncAddTerminalMenuState() {
-    if (!dom.addTerminalMenu) return;
-
-    dom.addTerminalMenu.querySelectorAll("[data-provider]").forEach((button) => {
-      const providerKey = button.dataset.provider;
-      const isUnavailable = providerCatalog[providerKey]?.available === false;
-      button.disabled = isUnavailable;
-      button.classList.toggle("opacity-40", isUnavailable);
-      button.classList.toggle("cursor-not-allowed", isUnavailable);
-    });
-  }
-
   dom.appNoticeCloseBtn?.addEventListener("click", () => hideNotice());
   dom.providerStatusCloseBtn?.addEventListener("click", () => dismissProviderAvailabilityBanner());
 
@@ -109,12 +95,11 @@ export function bindUiEvents() {
   dom.saveSessionBtn.addEventListener("click", () => {
     const data = collectSessionState();
     if (data.workspaces.length === 0) return;
-    // Reuse preset name modal for session name
-    dom.presetNameModal.classList.remove("hidden");
-    dom.presetNameInput.value = "";
-    dom.presetNameInput.placeholder = "Nome della sessione...";
-    dom.presetNameInput.focus();
-    dom.presetNameModal.dataset.mode = "session";
+    openNameModal({
+      mode: "session",
+      title: "Salva sessione",
+      placeholder: "Nome della sessione...",
+    });
   });
 
   dom.homeTab.addEventListener("click", () => switchView("home"));
@@ -122,31 +107,20 @@ export function bindUiEvents() {
   dom.launchBtn.addEventListener("click", () => launchWorkspace());
   dom.savePresetBtn.addEventListener("click", () => saveCurrentAsPreset());
 
+  initAddTerminalMenu(async (provider, context) => {
+    await addTerminalToActiveWorkspace(provider, context);
+  });
+
   dom.addTerminalBtn?.addEventListener("click", (event) => {
     event.stopPropagation();
-    syncAddTerminalMenuState();
-    dom.addTerminalMenu?.classList.toggle("hidden");
-  });
-
-  dom.addTerminalMenu?.querySelectorAll("[data-provider]").forEach((button) => {
-    button.addEventListener("click", async (event) => {
-      event.stopPropagation();
-      closeAddTerminalMenu();
-      const provider = button.dataset.provider;
-      if (provider) {
-        await addTerminalToActiveWorkspace(provider);
-      }
+    const focusedSession = sessionStore.get(state.focusedSessionId);
+    const activeWorkspaceId = state.activeView;
+    openAddTerminalMenu(dom.addTerminalBtn, {
+      workspaceId: activeWorkspaceId,
+      targetClientId: focusedSession?.workspaceId === activeWorkspaceId ? focusedSession.clientId : null,
+      splitDirection: "vertical",
+      title: "Aggiungi accanto al pannello attivo",
     });
-  });
-
-  document.addEventListener("mousedown", (event) => {
-    if (
-      dom.addTerminalWrap &&
-      !dom.addTerminalWrap.classList.contains("hidden") &&
-      !dom.addTerminalWrap.contains(event.target)
-    ) {
-      closeAddTerminalMenu();
-    }
   });
 
   dom.broadcastToggle.addEventListener("click", () => toggleBroadcast());
@@ -170,17 +144,11 @@ export function bindUiEvents() {
 
   dom.presetNameConfirm.addEventListener("click", () => handleNameModalConfirm());
   dom.presetNameCancel.addEventListener("click", () => closeNameModal());
+  dom.presetNameBackdrop?.addEventListener("click", () => closeNameModal());
   dom.presetNameInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") handleNameModalConfirm();
-    if (e.key === "Escape") dom.presetNameModal.classList.add("hidden");
+    if (e.key === "Escape") closeNameModal();
   });
-
-  function closeNameModal() {
-    dom.presetNameModal.classList.add("hidden");
-    delete dom.presetNameModal.dataset.mode;
-    delete dom.presetNameModal.dataset.workspaceId;
-    dom.presetNameInput.placeholder = "Nome del preset...";
-  }
 
   async function handleNameModalConfirm() {
     const name = dom.presetNameInput.value.trim();

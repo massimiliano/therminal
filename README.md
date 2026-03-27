@@ -139,6 +139,7 @@ Therminal puo usare un binario locale compatibile con `whisper.cpp` per dettare 
 6. In un workspace attivo tieni premuto `Shift + Alt + Z`, parla e rilascia per trascrivere.
 
 Suggerimento pratico: per velocita su CPU Windows conviene partire da un modello `tiny` o `base`.
+Se nello stesso folder di `whisper-cli.exe` e presente anche `whisper-server.exe`, Therminal lo avvia in background e mantiene il modello residente in memoria per ridurre la latenza delle trascrizioni successive. In assenza del server continua a usare il flusso compatibile `whisper-cli` per ogni richiesta.
 
 ## Struttura del progetto
 

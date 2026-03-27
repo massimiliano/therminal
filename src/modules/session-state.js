@@ -6,6 +6,29 @@ import { updateSavedSection } from "./helpers.js";
 import { extractInlineArgs } from "./cli-options.js";
 import { getUnavailableProviders, getProviderLabel, validateProviderSelection } from "./providers.js";
 
+function getConfigClients(config) {
+  if (Array.isArray(config?.clients) && config.clients.length > 0) {
+    return config.clients;
+  }
+
+  const providers = Array.isArray(config?.providers) ? config.providers : [];
+  return providers.map((provider, index) => ({
+    id: `client-${index + 1}`,
+    provider,
+    command: Array.isArray(config?.commands) ? config.commands[index] : "",
+    inlineArgs: Array.isArray(config?.inlineArgs) ? config.inlineArgs[index] : "",
+    taskStatus: Array.isArray(config?.taskStatuses) ? config.taskStatuses[index] : "todo",
+    cwd: config?.cwd || ".",
+  }));
+}
+
+function getWorkspacePaths(config) {
+  return (config.workspaces || []).map((ws, index) => ({
+    name: ws?.name || `Workspace ${index + 1}`,
+    cwd: ws?.cwd || ".",
+  }));
+}
+
 function renderSessionLoadingState() {
   dom.sessionSection.classList.remove("hidden");
   updateSavedSection();
@@ -32,6 +55,15 @@ export function collectSessionState() {
   for (const [, ws] of workspaces) {
     data.push({
       name: ws.name,
+      clients: ws.clients.map((client) => ({
+        id: client.id,
+        provider: client.provider,
+        command: client.command,
+        inlineArgs: extractInlineArgs(client.provider, client.command),
+        taskStatus: client.taskStatus || "todo",
+        cwd: client.cwd || ".",
+      })),
+      layout: ws.layout,
       providers: ws.clients.map((c) => c.provider),
       commands: ws.clients.map((c) => c.command),
       inlineArgs: ws.clients.map((c) => extractInlineArgs(c.provider, c.command)),
@@ -51,7 +83,7 @@ export async function saveSessionAs(name) {
 }
 
 export async function restoreSession(config) {
-  const requestedProviders = config.workspaces.flatMap((ws) => ws.providers || []);
+  const requestedProviders = config.workspaces.flatMap((ws) => getConfigClients(ws).map((client) => client.provider));
   const validation = await validateProviderSelection(requestedProviders, { force: true, notify: true });
   if (!validation.ok) {
     return;
@@ -83,9 +115,19 @@ export async function loadSessionsUI() {
   updateSavedSection();
 
   for (const [name, config] of validEntries) {
-    const card = document.createElement("button");
+    const workspacePaths = getWorkspacePaths(config);
+
+    const card = document.createElement("div");
     card.className =
-      "flex items-center gap-3 px-4 py-2.5 bg-th-card border border-th-border-lt rounded-[10px] cursor-pointer transition-all duration-200 text-left min-w-[180px] hover:border-emerald-400 hover:bg-emerald-400/[0.03]";
+      "flex flex-col gap-3 px-4 py-3 bg-th-card border border-th-border-lt rounded-[10px] transition-all duration-200 text-left min-w-[180px] hover:border-emerald-400 hover:bg-emerald-400/[0.03]";
+
+    const header = document.createElement("div");
+    header.className = "flex items-start gap-3";
+
+    const restoreBtn = document.createElement("button");
+    restoreBtn.type = "button";
+    restoreBtn.className = "flex-1 min-w-0 bg-transparent text-left cursor-pointer";
+    restoreBtn.addEventListener("click", () => restoreSession(config));
 
     const info = document.createElement("div");
     info.className = "flex flex-col gap-0.5 flex-1 min-w-0";
@@ -99,6 +141,7 @@ export async function loadSessionsUI() {
     wsDesc.className = "flex items-center gap-2 flex-wrap";
 
     for (const ws of config.workspaces) {
+      const clients = getConfigClients(ws);
       const wsChip = document.createElement("span");
       wsChip.className = "flex items-center gap-1";
 
@@ -108,8 +151,8 @@ export async function loadSessionsUI() {
       wsChip.append(wsName);
 
       const counts = {};
-      for (const p of ws.providers) {
-        counts[p] = (counts[p] || 0) + 1;
+      for (const client of clients) {
+        counts[client.provider] = (counts[client.provider] || 0) + 1;
       }
       for (const [provider, count] of Object.entries(counts)) {
         const dot = document.createElement("span");
@@ -121,11 +164,11 @@ export async function loadSessionsUI() {
       wsDesc.append(wsChip);
     }
 
-    const pathEl = document.createElement("span");
-    pathEl.className = "text-[9px] text-zinc-600 font-mono truncate";
-    pathEl.textContent = config.workspaces[0]?.cwd || ".";
+    const pathHint = document.createElement("span");
+    pathHint.className = "text-[9px] text-zinc-500";
+    pathHint.textContent = `${workspacePaths.length} ${workspacePaths.length === 1 ? "percorso workspace" : "percorsi workspace"}`;
 
-    info.append(title, wsDesc, pathEl);
+    info.append(title, wsDesc, pathHint);
 
     const hasSharedContext = config.workspaces.some((ws) => {
       const hasNotes = typeof ws?.sharedContext === "string" && ws.sharedContext.trim().length > 0;
@@ -145,7 +188,9 @@ export async function loadSessionsUI() {
       info.append(contextHint);
     }
 
-    const unavailable = getUnavailableProviders(config.workspaces.flatMap((ws) => ws.providers || []));
+    const unavailable = getUnavailableProviders(
+      config.workspaces.flatMap((ws) => getConfigClients(ws).map((client) => client.provider))
+    );
     if (unavailable.length > 0) {
       const warn = document.createElement("span");
       warn.className = "text-[9px] text-red-300 font-medium";
@@ -163,8 +208,54 @@ export async function loadSessionsUI() {
       loadSessionsUI();
     });
 
-    card.append(info, deleteBtn);
-    card.addEventListener("click", () => restoreSession(config));
+    restoreBtn.append(info);
+    header.append(restoreBtn, deleteBtn);
+    card.append(header);
+
+    const accordion = document.createElement("details");
+    accordion.className = "th-accordion rounded-lg border border-th-border-lt bg-th-bg/40";
+
+    const summary = document.createElement("summary");
+    summary.className = "flex items-center justify-between gap-3 px-3 py-2 text-[11px] text-zinc-400";
+
+    const summaryLabel = document.createElement("span");
+    summaryLabel.className = "font-medium text-zinc-300";
+    summaryLabel.textContent = "Percorsi file system";
+
+    const summaryMeta = document.createElement("div");
+    summaryMeta.className = "flex items-center gap-2 shrink-0";
+
+    const summaryCount = document.createElement("span");
+    summaryCount.className = "rounded-full border border-zinc-700/70 bg-th-card px-2 py-0.5 text-[10px] font-semibold text-zinc-400";
+    summaryCount.textContent = String(workspacePaths.length);
+
+    const summaryIcon = document.createElement("i");
+    summaryIcon.className = "th-accordion-chevron bi bi-chevron-down text-[10px] text-zinc-500";
+
+    summaryMeta.append(summaryCount, summaryIcon);
+    summary.append(summaryLabel, summaryMeta);
+
+    const pathList = document.createElement("div");
+    pathList.className = "flex flex-col gap-2 px-3 pb-3";
+
+    for (const workspacePath of workspacePaths) {
+      const item = document.createElement("div");
+      item.className = "rounded-md border border-th-border-lt bg-th-card/60 px-3 py-2";
+
+      const nameEl = document.createElement("div");
+      nameEl.className = "text-[10px] font-semibold uppercase tracking-wide text-zinc-500";
+      nameEl.textContent = workspacePath.name;
+
+      const cwdEl = document.createElement("div");
+      cwdEl.className = "mt-1 text-[11px] font-mono text-zinc-300 break-all";
+      cwdEl.textContent = workspacePath.cwd;
+
+      item.append(nameEl, cwdEl);
+      pathList.append(item);
+    }
+
+    accordion.append(summary, pathList);
+    card.append(accordion);
     dom.sessionList.append(card);
   }
 }

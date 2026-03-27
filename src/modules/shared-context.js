@@ -243,12 +243,17 @@ function getWorkspaceAiSessions() {
 
   return workspace.clients
     .map((client) => sessionStore.get(client.sessionId))
-    .filter((session) => session && session.provider !== "terminal");
+    .filter((session) => session && session.provider !== "terminal" && session.provider !== "browser");
 }
 
 function getPreferredTargetSession() {
   const focused = state.focusedSessionId ? sessionStore.get(state.focusedSessionId) : null;
-  if (focused && focused.workspaceId === state.activeView && focused.provider !== "terminal") {
+  if (
+    focused &&
+    focused.workspaceId === state.activeView &&
+    focused.provider !== "terminal" &&
+    focused.provider !== "browser"
+  ) {
     return focused;
   }
 
@@ -257,12 +262,15 @@ function getPreferredTargetSession() {
 
 function getFocusedWorkspaceSession() {
   const focused = state.focusedSessionId ? sessionStore.get(state.focusedSessionId) : null;
-  if (focused && focused.workspaceId === state.activeView) {
+  if (focused && focused.workspaceId === state.activeView && focused.provider !== "browser") {
     return focused;
   }
 
   const workspace = getActiveWorkspace();
-  const sessionId = workspace?.clients?.find((client) => client.sessionId)?.sessionId;
+  const sessionId = workspace?.clients?.find((client) => {
+    const session = client.sessionId ? sessionStore.get(client.sessionId) : null;
+    return session && session.provider !== "browser";
+  })?.sessionId;
   return sessionId ? sessionStore.get(sessionId) : null;
 }
 

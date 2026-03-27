@@ -5,6 +5,7 @@
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self';
+               frame-src 'self' https: http:;
                style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
                font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net;
                script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com;"
@@ -64,6 +65,12 @@
         <span>Home</span>
       </button>
 
+      <div
+        id="workspaceTabsDivider"
+        class="hidden h-4 w-px bg-zinc-800/90 mx-1 shrink-0"
+        aria-hidden="true"
+      ></div>
+
       <div class="flex-1"></div>
 
       <div id="tabBarTools" class="flex items-center gap-1">
@@ -98,8 +105,29 @@
           </button>
           <div
             id="addTerminalMenu"
-            class="hidden absolute top-[calc(100%+8px)] right-0 z-[220] min-w-[220px] rounded-xl border border-th-border-lt bg-th-card p-1.5 shadow-[0_16px_48px_rgba(0,0,0,0.45)]"
+            class="hidden fixed z-[220] w-[240px] rounded-xl border border-th-border-lt bg-th-card p-1.5 shadow-[0_16px_48px_rgba(0,0,0,0.45)]"
           >
+            <div class="px-2.5 pt-2 pb-1.5 border-b border-th-border-lt/80 mb-1.5">
+              <p id="addTerminalMenuTitle" class="text-[11px] font-semibold text-zinc-200">
+                Aggiungi nel workspace
+              </p>
+              <div class="mt-2 flex items-center gap-1">
+                <button
+                  type="button"
+                  id="addTerminalDirVertical"
+                  class="add-terminal-dir is-active flex-1 rounded-md border border-zinc-700/60 px-2 py-1 text-[10px] font-medium text-zinc-300 transition-colors"
+                >
+                  Split verticale
+                </button>
+                <button
+                  type="button"
+                  id="addTerminalDirHorizontal"
+                  class="add-terminal-dir flex-1 rounded-md border border-zinc-700/60 px-2 py-1 text-[10px] font-medium text-zinc-300 transition-colors"
+                >
+                  Split orizzontale
+                </button>
+              </div>
+            </div>
             <button
               type="button"
               data-provider="codex"
@@ -131,6 +159,14 @@
             >
               <i class="bi bi-terminal text-emerald-400"></i>
               <span>Terminale</span>
+            </button>
+            <button
+              type="button"
+              data-provider="browser"
+              class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
+            >
+              <i class="bi bi-globe2 text-cyan-300"></i>
+              <span>Browser</span>
             </button>
           </div>
         </div>
@@ -395,6 +431,10 @@
 
     <div id="workspaceContainer" class="flex-1 hidden overflow-hidden relative">
       <div
+        id="workspaceDragBadge"
+        class="pointer-events-none absolute top-4 right-4 z-[30] hidden rounded-full border border-emerald-400/30 bg-th-surface/95 px-3 py-1.5 text-[11px] font-medium text-emerald-200 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-md"
+      ></div>
+      <div
         id="broadcastBar"
         class="absolute bottom-0 left-0 right-0 flex items-center gap-2 px-3 py-1.5 bg-th-surface/95 border-t border-emerald-400/25 backdrop-blur-lg z-10 hidden"
       >
@@ -435,13 +475,13 @@
       class="fixed inset-0 z-[100] flex items-center justify-center hidden"
     >
       <div
+        id="presetNameBackdrop"
         class="shortcuts-backdrop absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onclick="document.getElementById('presetNameModal').classList.add('hidden')"
       ></div>
       <div
         class="relative w-[360px] bg-th-card border border-th-border-lt rounded-xl shadow-[0_24px_64px_rgba(0,0,0,0.38)] p-5"
       >
-        <h3 class="text-sm font-bold text-th-fg mb-3">Salva Preset</h3>
+        <h3 id="presetNameTitle" class="text-sm font-bold text-th-fg mb-3">Salva preset</h3>
         <input
           id="presetNameInput"
           type="text"
@@ -661,7 +701,7 @@
 
               <div class="flex items-center justify-between gap-3">
                 <p class="text-[11px] text-zinc-600 leading-relaxed">
-                  Per velocita su CPU usa un modello tiny o base. La registrazione resta locale; la trascrizione parte solo al rilascio della shortcut.
+                  Per velocita su CPU usa un modello tiny o base. Se `whisper-server.exe` e presente accanto a `whisper-cli.exe`, Therminal lo tiene caldo in memoria per ridurre la latenza.
                 </p>
                 <button
                   id="voiceSaveSettingsBtn"

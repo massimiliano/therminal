@@ -84,6 +84,10 @@ export function appendInlineArg(existingArgs, key, value = "") {
 }
 
 export function buildClientCommand(provider, inlineArgs = "") {
+  if (provider === "browser") {
+    return typeof inlineArgs === "string" && inlineArgs.trim() ? inlineArgs.trim() : "https://example.com";
+  }
+
   const baseCommand = providerCatalog[provider]?.defaultCommand ?? provider;
   const tail = typeof inlineArgs === "string" ? inlineArgs.trim() : "";
 
@@ -95,6 +99,10 @@ export function buildClientCommand(provider, inlineArgs = "") {
 export function extractInlineArgs(provider, command = "") {
   const full = typeof command === "string" ? command.trim() : "";
   if (!full) return "";
+
+  if (provider === "browser") {
+    return full;
+  }
 
   const baseCommand = providerCatalog[provider]?.defaultCommand ?? provider;
   const base = typeof baseCommand === "string" ? baseCommand.trim() : "";

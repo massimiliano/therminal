@@ -22,6 +22,7 @@ export const state = {
   currentFontSize: parseInt(localStorage.getItem("therminal-font-size")) || 13,
   maximizedSessionId: null,
   focusedSessionId: null,
+  dragSessionId: null,
   broadcastMode: false,
 };
 
@@ -56,6 +57,10 @@ export const PROVIDER_STYLE = {
     quick: "text-emerald-400 hover:border-emerald-500/35 hover:bg-emerald-500/5",
     card: "border-emerald-500/20 shadow-[0_0_12px_rgba(52,211,153,0.03)]",
     dot: "bg-emerald-500/25 text-emerald-400",
+  },
+  browser: {
+    badge: "bg-cyan-500/15 text-cyan-300",
+    dot: "bg-cyan-500/25 text-cyan-300",
   },
 };
 

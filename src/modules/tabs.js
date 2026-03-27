@@ -2,6 +2,7 @@ import { state, workspaces, PROVIDER_STYLE } from "./state.js";
 import { dom } from "./dom.js";
 import { refitWorkspace } from "./helpers.js";
 import { syncSharedContextUi } from "./shared-context.js";
+import { openNameModal } from "./name-modal.js";
 
 const TAB_CLS =
   "flex items-center gap-1.5 px-3 rounded-md text-xs font-medium cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px]";
@@ -80,13 +81,13 @@ function showTabContextMenu(e, ws, label) {
 function openWorkspacePresetModal(ws) {
   if (!ws) return;
 
-  dom.presetNameModal.classList.remove("hidden");
-  dom.presetNameInput.value = ws.name || "";
-  dom.presetNameInput.placeholder = "Nome del preset...";
-  dom.presetNameModal.dataset.mode = "workspace-preset";
-  dom.presetNameModal.dataset.workspaceId = ws.id;
-  dom.presetNameInput.focus();
-  dom.presetNameInput.select();
+  openNameModal({
+    mode: "workspace-preset",
+    title: "Salva preset",
+    placeholder: "Nome del preset...",
+    value: ws.name || "",
+    workspaceId: ws.id,
+  });
 }
 
 function startRename(ws, label) {
@@ -144,6 +145,7 @@ export function renderTabs() {
   dom.tabBar.querySelectorAll(".workspace-tab").forEach((el) => el.remove());
 
   const toolsEl = document.getElementById("tabBarTools");
+  dom.workspaceTabsDivider?.classList.toggle("hidden", workspaces.size === 0);
 
   for (const [id, ws] of workspaces) {
     const isActive = state.activeView === id;
