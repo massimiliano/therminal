@@ -36,6 +36,9 @@ export function collectSessionState() {
       commands: ws.clients.map((c) => c.command),
       inlineArgs: ws.clients.map((c) => extractInlineArgs(c.provider, c.command)),
       cwd: ws.clients[0]?.cwd || ".",
+      sharedContext: ws.sharedContext || "",
+      handoff: ws.handoff || {},
+      taskStatuses: ws.clients.map((client) => client.taskStatus || "todo"),
     });
   }
   return { workspaces: data };
@@ -123,6 +126,24 @@ export async function loadSessionsUI() {
     pathEl.textContent = config.workspaces[0]?.cwd || ".";
 
     info.append(title, wsDesc, pathEl);
+
+    const hasSharedContext = config.workspaces.some((ws) => {
+      const hasNotes = typeof ws?.sharedContext === "string" && ws.sharedContext.trim().length > 0;
+      const handoff = ws?.handoff || {};
+      const hasHandoff =
+        typeof handoff.goal === "string" && handoff.goal.trim().length > 0 ||
+        typeof handoff.constraints === "string" && handoff.constraints.trim().length > 0 ||
+        typeof handoff.decisions === "string" && handoff.decisions.trim().length > 0 ||
+        typeof handoff.nextStep === "string" && handoff.nextStep.trim().length > 0 ||
+        typeof handoff.summary === "string" && handoff.summary.trim().length > 0;
+      return hasNotes || hasHandoff;
+    });
+    if (hasSharedContext) {
+      const contextHint = document.createElement("span");
+      contextHint.className = "text-[9px] text-emerald-300 font-medium";
+      contextHint.textContent = "Handoff strutturato incluso";
+      info.append(contextHint);
+    }
 
     const unavailable = getUnavailableProviders(config.workspaces.flatMap((ws) => ws.providers || []));
     if (unavailable.length > 0) {

@@ -496,6 +496,102 @@ function getExistingDirectory(defaultPath) {
   return undefined;
 }
 
+function runGitCommand(cwd, args) {
+  return spawnSync("git", ["-C", cwd, ...args], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    shell: false,
+    windowsHide: true
+  });
+}
+
+function parseGitStatusLine(line) {
+  if (typeof line !== "string" || line.length < 3) {
+    return null;
+  }
+
+  const indexStatus = line[0];
+  const worktreeStatus = line[1];
+  const rawPath = line.slice(3).trim();
+  const pathValue = rawPath.includes(" -> ") ? rawPath.split(" -> ").pop().trim() : rawPath;
+
+  if (!pathValue) {
+    return null;
+  }
+
+  return {
+    path: pathValue,
+    indexStatus,
+    worktreeStatus,
+    staged: indexStatus !== " " && indexStatus !== "?",
+    untracked: indexStatus === "?" || worktreeStatus === "?",
+    raw: line
+  };
+}
+
+function getGitStatusSummary(payload = {}) {
+  const requestedCwd =
+    typeof payload.cwd === "string" && payload.cwd.trim().length > 0 ? payload.cwd.trim() : process.cwd();
+  const cwd = path.resolve(requestedCwd);
+
+  if (!fs.existsSync(cwd)) {
+    return {
+      ok: false,
+      cwd,
+      reason: "missing-cwd",
+      message: `Directory non trovata: ${cwd}`
+    };
+  }
+
+  const rootResult = runGitCommand(cwd, ["rev-parse", "--show-toplevel"]);
+  if (rootResult.error || rootResult.status !== 0) {
+    return {
+      ok: false,
+      cwd,
+      reason: "not-a-repo",
+      message: "Nessun repository Git rilevato nel workspace."
+    };
+  }
+
+  const repoRoot = String(rootResult.stdout || "").trim();
+  const branchResult = runGitCommand(cwd, ["rev-parse", "--abbrev-ref", "HEAD"]);
+  const statusResult = runGitCommand(cwd, ["status", "--short", "--branch", "--untracked-files=all"]);
+
+  const branch = String(branchResult.stdout || "").trim() || "HEAD";
+  const statusLines = String(statusResult.stdout || "")
+    .split(/\r?\n/)
+    .filter(Boolean);
+  const branchLine = statusLines[0] || "";
+  const fileLines = statusLines.slice(branchLine.startsWith("##") ? 1 : 0);
+  const files = fileLines.map(parseGitStatusLine).filter(Boolean);
+
+  let ahead = 0;
+  let behind = 0;
+  const aheadMatch = branchLine.match(/ahead (\d+)/i);
+  const behindMatch = branchLine.match(/behind (\d+)/i);
+  if (aheadMatch) {
+    ahead = Number(aheadMatch[1]) || 0;
+  }
+  if (behindMatch) {
+    behind = Number(behindMatch[1]) || 0;
+  }
+
+  return {
+    ok: true,
+    cwd,
+    repoRoot,
+    branch,
+    branchLine,
+    dirty: files.length > 0,
+    ahead,
+    behind,
+    stagedCount: files.filter((file) => file.staged).length,
+    untrackedCount: files.filter((file) => file.untracked).length,
+    changedCount: files.length,
+    files: files.slice(0, 12)
+  };
+}
+
 function getLatestActiveSession(provider) {
   const sessions = Array.from(sessionMap.values());
   for (let i = sessions.length - 1; i >= 0; i -= 1) {
@@ -2063,6 +2159,7 @@ ipcMain.handle("usage:summary", () => getUsageSummary());
 ipcMain.handle("usage:panel", (_event, payload) => getUsagePanelSummary(payload || {}));
 ipcMain.handle("usage:panel-provider", (_event, payload) => getUsagePanelProvider(payload || {}));
 ipcMain.handle("services:status", (_event, payload) => getServiceStatuses(Boolean(payload?.force)));
+ipcMain.handle("git:status", (_event, payload) => getGitStatusSummary(payload || {}));
 
 ipcMain.handle("dialog:open-directory", async (event, payload = {}) => {
   const win = BrowserWindow.fromWebContents(event.sender);

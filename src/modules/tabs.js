@@ -1,6 +1,7 @@
 import { state, workspaces, PROVIDER_STYLE } from "./state.js";
 import { dom } from "./dom.js";
 import { refitWorkspace } from "./helpers.js";
+import { syncSharedContextUi } from "./shared-context.js";
 
 const TAB_CLS =
   "flex items-center gap-1.5 px-3 rounded-md text-xs font-medium cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px]";
@@ -178,6 +179,7 @@ export function renderTabs() {
 
   const isHome = state.activeView === "home";
   dom.homeTab.className = `${TAB_CLS} ${isHome ? TAB_ACTIVE : TAB_IDLE}`;
+  syncSharedContextUi();
 }
 
 export function switchView(viewId) {
@@ -206,4 +208,5 @@ export function switchView(viewId) {
   }
 
   renderTabs();
+  syncSharedContextUi();
 }

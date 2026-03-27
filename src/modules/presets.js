@@ -1,6 +1,6 @@
 import { state, workspaces } from "./state.js";
 import { dom } from "./dom.js";
-import { launchWorkspace } from "./workspace.js";
+import { launchWorkspace, launchWorkspaceFromConfig } from "./workspace.js";
 import { updateSavedSection } from "./helpers.js";
 import { extractInlineArgs, normalizeInlineArgs } from "./cli-options.js";
 import { getUnavailableProviders, getProviderLabel } from "./providers.js";
@@ -64,6 +64,17 @@ export async function loadPresets() {
 
     info.append(title, desc, pathEl);
 
+    const hasHandoff =
+      (typeof config.sharedContext === "string" && config.sharedContext.trim().length > 0) ||
+      (typeof config.handoff?.goal === "string" && config.handoff.goal.trim().length > 0) ||
+      (typeof config.handoff?.summary === "string" && config.handoff.summary.trim().length > 0);
+    if (hasHandoff) {
+      const handoffHint = document.createElement("span");
+      handoffHint.className = "text-[9px] text-emerald-300 font-medium";
+      handoffHint.textContent = "Workflow e handoff inclusi";
+      info.append(handoffHint);
+    }
+
     const unavailable = getUnavailableProviders(config.providers || []);
     if (unavailable.length > 0) {
       const warn = document.createElement("span");
@@ -121,6 +132,9 @@ export async function saveWorkspaceAsPreset(name, workspaceId) {
     providers,
     inlineArgs,
     cwd: ws.clients[0]?.cwd || ".",
+    sharedContext: ws.sharedContext || "",
+    handoff: ws.handoff || {},
+    taskStatuses: ws.clients.map((client) => client.taskStatus || "todo"),
   };
 
   await window.launcherAPI.savePreset(name, config);
@@ -129,6 +143,20 @@ export async function saveWorkspaceAsPreset(name, workspaceId) {
 }
 
 async function launchPreset(config) {
+  if (typeof config.sharedContext === "string" || config.handoff || Array.isArray(config.taskStatuses)) {
+    await launchWorkspaceFromConfig({
+      name: config.name,
+      providers: config.providers,
+      cwd: config.cwd,
+      inlineArgs: Array.isArray(config.inlineArgs) ? config.inlineArgs : null,
+      commands: Array.isArray(config.commands) ? config.commands : null,
+      sharedContext: config.sharedContext || "",
+      handoff: config.handoff || {},
+      taskStatuses: config.taskStatuses || []
+    });
+    return;
+  }
+
   state.wizardClientCount = config.clientCount;
   state.wizardProviders = config.providers.slice();
   if (Array.isArray(config.inlineArgs)) {

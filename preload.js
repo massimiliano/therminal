@@ -33,6 +33,7 @@ contextBridge.exposeInMainWorld("launcherAPI", {
   getUsagePanelSummary: (payload = {}) => ipcRenderer.invoke("usage:panel", payload),
   getUsagePanelProvider: (payload = {}) => ipcRenderer.invoke("usage:panel-provider", payload),
   getServiceStatuses: (force = false) => ipcRenderer.invoke("services:status", { force }),
+  getGitStatus: (payload = {}) => ipcRenderer.invoke("git:status", payload),
 
   // Shell & dialog
   openExternal: (url) => ipcRenderer.invoke("shell:open-external", url),

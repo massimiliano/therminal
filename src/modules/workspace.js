@@ -8,6 +8,8 @@ import { restoreMaximized } from "./maximize.js";
 import { buildClientCommand, extractInlineArgs, normalizeInlineArgs } from "./cli-options.js";
 import { showNotice } from "./notices.js";
 import { validateProviderSelection } from "./providers.js";
+import { normalizeSharedContext, normalizeStructuredContext } from "./shared-context.js";
+import { normalizeTaskStatus } from "./task-status.js";
 
 function getGridDimensions(clientCount) {
   return (
@@ -170,6 +172,7 @@ async function createWorkspaceFromClients({ name, clients, meta = {} }) {
     sessionId: null,
     gridCol: index % gridCols,
     gridRow: Math.floor(index / gridCols),
+    taskStatus: normalizeTaskStatus(client.taskStatus),
   }));
 
   const rowSizes = new Array(gridRows).fill(1);
@@ -188,6 +191,8 @@ async function createWorkspaceFromClients({ name, clients, meta = {} }) {
     id: wsId,
     name: wsName,
     clients: positionedClients,
+    sharedContext: normalizeSharedContext(meta.sharedContext),
+    handoff: normalizeStructuredContext(meta.handoff),
     element: grid,
     gridCols,
     gridRows,
@@ -240,6 +245,7 @@ export async function launchWorkspace() {
     inlineArgs: state.wizardInlineArgs[i] || "",
     command: buildClientCommand(provider, state.wizardInlineArgs[i] || ""),
     cwd,
+    taskStatus: "todo",
   }));
 
   dom.launchBtn.disabled = true;
@@ -260,7 +266,16 @@ export async function launchWorkspace() {
   }
 }
 
-export async function launchWorkspaceFromConfig({ name, providers, cwd, inlineArgs, commands }) {
+export async function launchWorkspaceFromConfig({
+  name,
+  providers,
+  cwd,
+  inlineArgs,
+  commands,
+  sharedContext,
+  handoff,
+  taskStatuses
+}) {
   const normalizedInlineArgs = Array.isArray(inlineArgs)
     ? normalizeInlineArgs(inlineArgs, providers.length)
     : Array.isArray(commands)
@@ -275,6 +290,7 @@ export async function launchWorkspaceFromConfig({ name, providers, cwd, inlineAr
     inlineArgs: normalizedInlineArgs[index] || "",
     command: buildClientCommand(provider, normalizedInlineArgs[index] || ""),
     cwd: cwd || ".",
+    taskStatus: normalizeTaskStatus(Array.isArray(taskStatuses) ? taskStatuses[index] : "todo"),
   }));
 
   const validation = await ensureProvidersAvailable(clients);
@@ -283,7 +299,14 @@ export async function launchWorkspaceFromConfig({ name, providers, cwd, inlineAr
   }
 
   try {
-    return await createWorkspaceFromClients({ name, clients });
+    return await createWorkspaceFromClients({
+      name,
+      clients,
+      meta: {
+        sharedContext: normalizeSharedContext(sharedContext),
+        handoff: normalizeStructuredContext(handoff)
+      }
+    });
   } catch (error) {
     console.error("Launch config error:", error);
     showNotice(error?.message || "Impossibile ripristinare il workspace.", { type: "error" });
@@ -312,7 +335,8 @@ export async function addTerminalToActiveWorkspace(provider) {
     sessionId: null,
     index: workspace.clients.length,
     gridCol: 0,
-    gridRow: 0
+    gridRow: 0,
+    taskStatus: "todo"
   };
 
   workspace.clients.push(client);

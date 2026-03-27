@@ -17,6 +17,7 @@ import { showSearch } from "./search.js";
 import { toggleMaximize, restoreMaximized } from "./maximize.js";
 import { showNotice } from "./notices.js";
 import { validateProviderSelection } from "./providers.js";
+import { getNextTaskStatus, getTaskStatusMeta, normalizeTaskStatus } from "./task-status.js";
 
 function isPasteShortcut(event) {
   const key = String(event.key || "").toLowerCase();
@@ -46,6 +47,35 @@ export function exportLog(sessionId) {
   const content = lines.join("\n");
   const filename = `therminal-${s.provider}-${shortId(sessionId)}.log`;
   window.launcherAPI.saveLogFile(filename, content);
+}
+
+function updateWorkspaceClientTaskStatus(session, taskStatus) {
+  const workspace = workspaces.get(session.workspaceId);
+  const client = workspace?.clients?.[session.clientIndex];
+  if (client) {
+    client.taskStatus = taskStatus;
+  }
+}
+
+export function updateSessionTaskStatus(sessionId, nextStatus) {
+  const session = sessionStore.get(sessionId);
+  if (!session) {
+    return null;
+  }
+
+  const taskStatus = normalizeTaskStatus(nextStatus);
+  const meta = getTaskStatusMeta(taskStatus);
+  session.taskStatus = taskStatus;
+  updateWorkspaceClientTaskStatus(session, taskStatus);
+
+  if (session.statusBtn) {
+    session.statusBtn.className =
+      `inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] transition-colors ${meta.chip}`;
+    session.statusBtn.innerHTML = `<span class="inline-block w-1.5 h-1.5 rounded-full ${meta.dot}"></span>${meta.shortLabel}`;
+    session.statusBtn.title = `Task status: ${meta.label}`;
+  }
+
+  return taskStatus;
 }
 
 // ─── Drag & Drop (panel swap) ───────────────────────────
@@ -178,6 +208,9 @@ export async function createWorkspaceSession(workspace, client, row, insertBefor
   info.className = "text-[10px] text-zinc-600 font-mono flex-1";
   info.textContent = `#${client.index + 1}`;
 
+  const statusBtn = document.createElement("button");
+  statusBtn.type = "button";
+
   const actions = document.createElement("div");
   actions.className = "flex gap-0.5";
 
@@ -210,7 +243,7 @@ export async function createWorkspaceSession(workspace, client, row, insertBefor
   closeBtn.title = "Chiudi";
 
   actions.append(searchBtn, exportBtn, maxBtn, restartBtn, closeBtn);
-  head.append(grip, badge, info, actions);
+  head.append(grip, badge, info, statusBtn, actions);
 
   const body = document.createElement("div");
   body.className = "terminal-cell-body flex-1 min-h-0 bg-th-body relative";
@@ -321,14 +354,17 @@ export async function createWorkspaceSession(workspace, client, row, insertBefor
     cell,
     row,
     info,
+    statusBtn,
     terminal,
     fitAddon,
     searchAddon,
     inputDisposable,
     resizeObserver,
+    taskStatus: normalizeTaskStatus(client.taskStatus),
   };
 
   sessionStore.set(session.id, s);
+  updateSessionTaskStatus(session.id, s.taskStatus);
 
   cell.addEventListener("mousedown", () => {
     state.focusedSessionId = session.id;
@@ -339,6 +375,14 @@ export async function createWorkspaceSession(workspace, client, row, insertBefor
   searchBtn.addEventListener("click", () => showSearch(session.id));
   exportBtn.addEventListener("click", () => exportLog(session.id));
   maxBtn.addEventListener("click", () => toggleMaximize(session.id));
+  statusBtn.addEventListener("click", () => {
+    const nextStatus = getNextTaskStatus(s.taskStatus);
+    updateSessionTaskStatus(session.id, nextStatus);
+    showNotice(`Task ${client.index + 1}: ${getTaskStatusMeta(nextStatus).label}.`, {
+      type: "info",
+      timeoutMs: 1800
+    });
+  });
 
   closeBtn.addEventListener("click", () => {
     destroySession(session.id, { notifyBackend: true });

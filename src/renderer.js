@@ -12,6 +12,7 @@ import { initServiceStatusPanel } from "./modules/service-status.js";
 import { initUsagePanel } from "./modules/usage-panel.js";
 import { refreshProviderCatalog } from "./modules/providers.js";
 import { initVoiceToText } from "./modules/voice.js";
+import { initSharedContext } from "./modules/shared-context.js";
 
 async function bootstrap() {
   if (!TerminalCtor || !FitAddonCtor || !window.launcherAPI) {
@@ -39,6 +40,7 @@ async function bootstrap() {
     initMonitor();
     initServiceStatusPanel();
     initUsagePanel();
+    initSharedContext();
     await initVoiceToText();
   } catch (error) {
     console.error("Bootstrap failed:", error);
