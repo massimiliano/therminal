@@ -5,12 +5,17 @@ import { hideNotice, showNotice } from "./notices.js";
 const PUSH_TO_TALK_KEYS = new Set(["KeyZ", "AltLeft", "AltRight", "ShiftLeft", "ShiftRight"]);
 const TARGET_SAMPLE_RATE = 16000;
 const MIN_RECORDING_MS = 180;
+const DEFAULT_VOICE_PROVIDER = "local";
+const DEFAULT_GROQ_MODEL = "whisper-large-v3-turbo";
 
 let voiceConfig = {
+  provider: DEFAULT_VOICE_PROVIDER,
   whisperCliPath: "",
   modelPath: "",
   language: "it",
-  autoSubmit: false
+  autoSubmit: false,
+  groqApiKey: "",
+  groqModel: DEFAULT_GROQ_MODEL
 };
 
 let voiceCapture = createIdleCapture();
@@ -31,8 +36,58 @@ function createIdleCapture() {
   };
 }
 
+function getVoiceProvider(config = voiceConfig) {
+  return config?.provider === "groq" ? "groq" : DEFAULT_VOICE_PROVIDER;
+}
+
+function isGroqVoiceProvider(config = voiceConfig) {
+  return getVoiceProvider(config) === "groq";
+}
+
+function getSelectedVoiceProvider() {
+  return dom.voiceProviderSelect?.value === "groq" ? "groq" : DEFAULT_VOICE_PROVIDER;
+}
+
 function isVoiceConfigured(config = voiceConfig) {
+  if (isGroqVoiceProvider(config)) {
+    return Boolean(config?.groqApiKey && config?.groqModel);
+  }
+
   return Boolean(config?.whisperCliPath && config?.modelPath);
+}
+
+function getVoiceConfigRequirementText(config = voiceConfig) {
+  if (isGroqVoiceProvider(config)) {
+    return "Configura Groq API key e modello cloud prima di usare il push-to-talk.";
+  }
+
+  return "Configura whisper-cli.exe e il modello locale prima di usare il push-to-talk.";
+}
+
+function getReadyVoiceDetail(config = voiceConfig) {
+  if (isGroqVoiceProvider(config)) {
+    return `Tieni premuto Shift+Alt+Z nella finestra di Therminal per dettare via Groq (${config.groqModel || DEFAULT_GROQ_MODEL}).`;
+  }
+
+  return "Tieni premuto Shift+Alt+Z nella finestra di Therminal per dettare nella sessione attiva.";
+}
+
+function getTranscribingVoiceDetail(config = voiceConfig) {
+  if (isGroqVoiceProvider(config)) {
+    return `Audio catturato. Sto eseguendo la trascrizione con Groq (${config.groqModel || DEFAULT_GROQ_MODEL}).`;
+  }
+
+  return "Audio catturato. Sto eseguendo la trascrizione locale con il modello configurato.";
+}
+
+function getToolbarReadyLabel(config = voiceConfig) {
+  return isGroqVoiceProvider(config) ? "Groq" : "Local";
+}
+
+function renderVoiceProviderFields(provider = getSelectedVoiceProvider()) {
+  const showGroq = provider === "groq";
+  dom.voiceLocalFields?.classList.toggle("hidden", showGroq);
+  dom.voiceGroqFields?.classList.toggle("hidden", !showGroq);
 }
 
 function truncateText(text, maxLength = 120) {
@@ -58,7 +113,7 @@ function getVoiceStatusMeta() {
   if (voiceCapture.phase === "transcribing") {
     return {
       label: "Trascrizione",
-      detail: "Audio catturato. Sto eseguendo la trascrizione locale con il modello configurato.",
+      detail: getTranscribingVoiceDetail(),
       badgeClass: "border-amber-500/35 bg-amber-500/10 text-amber-200",
       dotClass: "bg-amber-400",
       toolbarClass: "border-amber-500/35 bg-amber-500/10 text-amber-200",
@@ -69,18 +124,17 @@ function getVoiceStatusMeta() {
   if (isVoiceConfigured()) {
     return {
       label: "Pronto",
-      detail: "Tieni premuto Shift+Alt+Z nella finestra di Therminal per dettare nella sessione attiva.",
+      detail: getReadyVoiceDetail(),
       badgeClass: "border-emerald-500/35 bg-emerald-500/10 text-emerald-200",
       dotClass: "bg-emerald-400",
       toolbarClass: "border-emerald-500/35 bg-emerald-500/10 text-emerald-200",
-      toolbarLabel: "Ready"
+      toolbarLabel: getToolbarReadyLabel()
     };
   }
 
   return {
     label: "Non configurato",
-    detail:
-      "Configura whisper-cli.exe e un modello locale `.bin` per abilitare il push-to-talk offline.",
+    detail: getVoiceConfigRequirementText(),
     badgeClass: "border-zinc-700/60 bg-th-body text-zinc-400",
     dotClass: "bg-zinc-500",
     toolbarClass: "border-zinc-700/60 bg-th-body text-zinc-500",
@@ -89,11 +143,20 @@ function getVoiceStatusMeta() {
 }
 
 function renderVoiceConfig() {
+  if (dom.voiceProviderSelect) {
+    dom.voiceProviderSelect.value = getVoiceProvider();
+  }
   if (dom.voiceWhisperPathInput) {
     dom.voiceWhisperPathInput.value = voiceConfig.whisperCliPath || "";
   }
   if (dom.voiceModelPathInput) {
     dom.voiceModelPathInput.value = voiceConfig.modelPath || "";
+  }
+  if (dom.voiceGroqApiKeyInput) {
+    dom.voiceGroqApiKeyInput.value = voiceConfig.groqApiKey || "";
+  }
+  if (dom.voiceGroqModelSelect) {
+    dom.voiceGroqModelSelect.value = voiceConfig.groqModel || DEFAULT_GROQ_MODEL;
   }
   if (dom.voiceLanguageInput) {
     dom.voiceLanguageInput.value = voiceConfig.language || "it";
@@ -101,6 +164,7 @@ function renderVoiceConfig() {
   if (dom.voiceAutoSubmitCheckbox) {
     dom.voiceAutoSubmitCheckbox.checked = Boolean(voiceConfig.autoSubmit);
   }
+  renderVoiceProviderFields(getVoiceProvider());
 }
 
 function renderVoiceStatus() {
@@ -130,8 +194,11 @@ function renderVoiceStatus() {
 
 function getVoiceConfigPayload() {
   return {
+    provider: getSelectedVoiceProvider(),
     whisperCliPath: dom.voiceWhisperPathInput?.value?.trim() || "",
     modelPath: dom.voiceModelPathInput?.value?.trim() || "",
+    groqApiKey: dom.voiceGroqApiKeyInput?.value?.trim() || "",
+    groqModel: dom.voiceGroqModelSelect?.value || DEFAULT_GROQ_MODEL,
     language: dom.voiceLanguageInput?.value?.trim() || "it",
     autoSubmit: Boolean(dom.voiceAutoSubmitCheckbox?.checked)
   };
@@ -144,7 +211,7 @@ async function refreshVoiceConfig() {
 }
 
 async function warmVoiceModel({ notify = false } = {}) {
-  if (!window.launcherAPI?.warmVoiceModel || !isVoiceConfigured()) {
+  if (!window.launcherAPI?.warmVoiceModel || isGroqVoiceProvider() || !isVoiceConfigured()) {
     return null;
   }
 
@@ -362,7 +429,7 @@ async function startVoiceCapture() {
   }
 
   if (!isVoiceConfigured()) {
-    showNotice("Configura whisper-cli.exe e il modello locale prima di usare il push-to-talk.", {
+    showNotice(getVoiceConfigRequirementText(), {
       type: "warning",
       timeoutMs: 3500
     });
@@ -472,7 +539,10 @@ async function stopVoiceCapture({ cancelled = false } = {}) {
       return;
     }
 
-    showNotice("Trascrizione locale in corso...", { type: "info", timeoutMs: 0 });
+    showNotice(`Trascrizione ${isGroqVoiceProvider() ? "Groq" : "locale"} in corso...`, {
+      type: "info",
+      timeoutMs: 0
+    });
     const result = await window.launcherAPI.transcribeVoice(wavBytes);
     hideNotice();
 
@@ -497,7 +567,7 @@ async function stopVoiceCapture({ cancelled = false } = {}) {
     showNotice(`Trascritto: ${truncateText(text)}`, { type: "success", timeoutMs: 3500 });
   } catch (error) {
     hideNotice();
-    showNotice(error?.message || "Trascrizione locale fallita.", { type: "error" });
+    showNotice(error?.message || "Trascrizione fallita.", { type: "error" });
   } finally {
     voiceCapture = createIdleCapture();
     renderVoiceStatus();
@@ -562,6 +632,9 @@ function bindPushToTalkShortcut() {
 }
 
 function bindVoiceUi() {
+  dom.voiceProviderSelect?.addEventListener("change", () => {
+    renderVoiceProviderFields(getSelectedVoiceProvider());
+  });
   dom.voicePickBinaryBtn?.addEventListener("click", () => pickVoiceBinary());
   dom.voicePickModelBtn?.addEventListener("click", () => pickVoiceModel());
   dom.voiceSaveSettingsBtn?.addEventListener("click", () => saveVoiceSettings());

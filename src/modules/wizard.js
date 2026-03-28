@@ -13,30 +13,88 @@ export function showStep(step) {
   dom.homeOverview.classList.toggle("hidden", step !== 1);
   dom.step1El.classList.toggle("hidden", step !== 1);
   dom.step2El.classList.toggle("hidden", step !== 2);
+  if (step !== 2) {
+    closeWizardEditor();
+  }
 }
 
-// Dot grid layouts for each count
 const DOT_GRIDS = {
-  1:  { cols: 1, rows: 1 },
-  2:  { cols: 2, rows: 1 },
-  4:  { cols: 2, rows: 2 },
-  8:  { cols: 4, rows: 2 },
+  1: { cols: 1, rows: 1 },
+  2: { cols: 2, rows: 1 },
+  4: { cols: 2, rows: 2 },
+  8: { cols: 4, rows: 2 },
   16: { cols: 4, rows: 4 },
   32: { cols: 8, rows: 4 },
 };
 
 const PROVIDER_ACTION_STYLE = {
-  claude: "text-amber-400 border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/20",
-  codex: "text-blue-400 border-blue-500/35 bg-blue-500/10 hover:bg-blue-500/20",
-  gemini: "text-violet-400 border-violet-500/35 bg-violet-500/10 hover:bg-violet-500/20",
-  terminal: "text-emerald-400 border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/20",
+  claude: "text-amber-300 border-amber-500/30 bg-amber-500/12 hover:bg-amber-500/20 hover:border-amber-400/50",
+  codex: "text-sky-300 border-sky-500/30 bg-sky-500/12 hover:bg-sky-500/20 hover:border-sky-400/50",
+  gemini: "text-violet-300 border-violet-500/30 bg-violet-500/12 hover:bg-violet-500/20 hover:border-violet-400/50",
+  terminal: "text-emerald-300 border-emerald-500/30 bg-emerald-500/12 hover:bg-emerald-500/20 hover:border-emerald-400/50",
 };
+
+const PROVIDER_META = {
+  claude: {
+    icon: "bi-stars",
+    description: "Assistente Anthropic per sessioni di coding con controllo su modello ed effort.",
+    kindLabel: "AI CLI",
+    bulkPlaceholder: "Argomenti per tutti i Claude",
+    inlinePlaceholder: "es: --model claude-sonnet-4-6 --effort high",
+  },
+  codex: {
+    icon: "bi-braces-asterisk",
+    description: "CLI OpenAI orientata a coding, automazioni e task multi-file.",
+    kindLabel: "AI CLI",
+    bulkPlaceholder: "Argomenti per tutti i Codex",
+    inlinePlaceholder: "es: --model gpt-5.4 --approval-policy on-request",
+  },
+  gemini: {
+    icon: "bi-magic",
+    description: "CLI Gemini per task generali, revisione e supporto al coding.",
+    kindLabel: "AI CLI",
+    bulkPlaceholder: "Argomenti per tutti i Gemini",
+    inlinePlaceholder: "es: --model gemini-2.5-pro",
+  },
+  terminal: {
+    icon: "bi-terminal",
+    description: "Terminale classico, utile per comandi liberi, script e processi locali.",
+    kindLabel: "Shell",
+    bulkPlaceholder: "Comando per tutti i terminali",
+    inlinePlaceholder: "es: npm run dev",
+  },
+  browser: {
+    icon: "bi-globe2",
+    description: "Sessione browser con URL iniziale personalizzabile.",
+    kindLabel: "Browser",
+    bulkPlaceholder: "URL per tutti i browser",
+    inlinePlaceholder: "es: https://example.com",
+  },
+};
+
+let activeWizardEditorIndex = null;
 
 function getProviderActionClass(providerKey) {
   return (
     PROVIDER_ACTION_STYLE[providerKey] ||
-    "text-emerald-400 border-emerald-500/35 bg-emerald-500/10 hover:bg-emerald-500/20"
+    "text-emerald-300 border-emerald-500/30 bg-emerald-500/12 hover:bg-emerald-500/20 hover:border-emerald-400/50"
   );
+}
+
+function getProviderMeta(providerKey, provider = {}) {
+  const fallbackLabel = providerKey ? providerKey.charAt(0).toUpperCase() + providerKey.slice(1) : "Provider";
+  const label = typeof provider.label === "string" && provider.label.trim() ? provider.label : fallbackLabel;
+  const shortLabel = label.replace(" CLI", "");
+  return {
+    icon: "bi-cpu",
+    description: "Provider configurabile per i client selezionati.",
+    kindLabel: provider?.kind === "shell" ? "Shell" : "CLI",
+    bulkPlaceholder: `Argomenti per tutti i client ${shortLabel}`,
+    inlinePlaceholder: "es: --flag valore",
+    label,
+    shortLabel,
+    ...PROVIDER_META[providerKey],
+  };
 }
 
 function buildDotGrid(count) {
@@ -99,13 +157,15 @@ export function buildCountOptions() {
         buildStep2();
         showStep(2);
 
-        void refreshProviderCatalog().then(() => {
-          if (state.wizardStep === 2 && state.wizardClientCount === count) {
-            buildStep2();
-          }
-        }).catch((error) => {
-          console.error("Provider refresh after step switch failed:", error);
-        });
+        void refreshProviderCatalog()
+          .then(() => {
+            if (state.wizardStep === 2 && state.wizardClientCount === count) {
+              buildStep2();
+            }
+          })
+          .catch((error) => {
+            console.error("Provider refresh after step switch failed:", error);
+          });
       } catch (error) {
         console.error("Provider preload failed:", error);
         showNotice("Impossibile rilevare i provider CLI disponibili.", { type: "error" });
@@ -115,27 +175,22 @@ export function buildCountOptions() {
   }
 }
 
-function buildInlineComposer(providerKey, clientIndex, inlineInput) {
+function buildInlineComposer(providerKey, clientIndex, inlineInput, onChange) {
   const schema = getInlineOptionsSchema(providerKey);
   if (schema.length === 0) return null;
 
   const wrapper = document.createElement("div");
-  wrapper.className = "w-full flex flex-col gap-1";
-
-  const hint = document.createElement("p");
-  hint.className = "text-[9px] text-zinc-600";
-  hint.textContent = `Preset parametri: ${providerCatalog[providerKey]?.label || providerKey}`;
+  wrapper.className = "wizard-inline-builder wizard-inline-builder-compact";
 
   const row = document.createElement("div");
-  row.className = "grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-1 w-full";
+  row.className = "wizard-inline-builder-grid";
 
   const paramSelect = document.createElement("select");
-  paramSelect.className =
-    "w-full min-w-0 bg-th-bg border border-th-border-lt rounded-md px-2 py-1 text-[10px] text-zinc-300 outline-none";
+  paramSelect.className = "wizard-select";
 
   const defaultOption = document.createElement("option");
   defaultOption.value = "";
-  defaultOption.textContent = "Parametro";
+  defaultOption.textContent = "Scegli parametro";
   paramSelect.append(defaultOption);
 
   for (const option of schema) {
@@ -147,24 +202,23 @@ function buildInlineComposer(providerKey, clientIndex, inlineInput) {
 
   const valueInput = document.createElement("input");
   valueInput.type = "text";
-  valueInput.className =
-    "w-full min-w-0 bg-th-bg border border-th-border-lt rounded-md px-2 py-1 text-[10px] text-zinc-300 outline-none";
-  valueInput.placeholder = "Valore (opzionale)";
+  valueInput.className = "wizard-input";
+  valueInput.placeholder = "Valore opzionale";
 
   const valuesDatalist = document.createElement("datalist");
   valuesDatalist.id = `param-values-${providerKey}-${clientIndex}`;
   valueInput.setAttribute("list", valuesDatalist.id);
 
   const addBtn = document.createElement("button");
-  addBtn.className =
-    `px-2 py-1 rounded-md text-[10px] font-semibold border cursor-pointer transition-all duration-150 ${getProviderActionClass(providerKey)}`;
-  addBtn.textContent = "Aggiungi";
+  addBtn.className = `wizard-inline-add ${getProviderActionClass(providerKey)}`;
+  addBtn.type = "button";
+  addBtn.innerHTML = '<i class="bi bi-plus-lg"></i><span>Aggiungi</span>';
 
   function refreshValueSuggestions() {
     valuesDatalist.innerHTML = "";
     const selected = schema.find((entry) => entry.key === paramSelect.value);
     if (!selected) {
-      valueInput.placeholder = "Valore (opzionale)";
+      valueInput.placeholder = "Valore opzionale";
       return;
     }
 
@@ -173,11 +227,7 @@ function buildInlineComposer(providerKey, clientIndex, inlineInput) {
       return;
     }
 
-    if (selected.valueHint === "integer") {
-      valueInput.placeholder = "Numero intero";
-    } else {
-      valueInput.placeholder = "Valore";
-    }
+    valueInput.placeholder = selected.valueHint === "integer" ? "Numero intero" : "Valore";
 
     for (const value of selected.values || []) {
       const opt = document.createElement("option");
@@ -199,11 +249,12 @@ function buildInlineComposer(providerKey, clientIndex, inlineInput) {
     );
     inlineInput.value = state.wizardInlineArgs[clientIndex];
     valueInput.value = "";
+    if (typeof onChange === "function") onChange();
   });
 
   refreshValueSuggestions();
   row.append(paramSelect, valueInput, addBtn);
-  wrapper.append(hint, row, valuesDatalist);
+  wrapper.append(row, valuesDatalist);
   return wrapper;
 }
 
@@ -225,65 +276,240 @@ function applyBulkInlineArgsForProvider(providerKey) {
   }
 }
 
+function getArgsSummary(value = "", providerKey = "") {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) {
+    return providerKey === "terminal" ? "Nessun comando aggiuntivo" : "Nessun argomento";
+  }
+
+  if (text.length <= 56) return text;
+  return `${text.slice(0, 56)}...`;
+}
+
+function closeWizardEditor() {
+  activeWizardEditorIndex = null;
+  dom.wizardEditorPanel?.classList.add("hidden");
+  dom.wizardEditorBackdrop?.classList.add("hidden");
+  dom.wizardEditorPanel?.setAttribute("aria-hidden", "true");
+  if (dom.wizardEditorPanel) {
+    delete dom.wizardEditorPanel.dataset.provider;
+  }
+  if (dom.wizardEditorBody) {
+    dom.wizardEditorBody.innerHTML = "";
+  }
+}
+
+function openWizardEditor(clientIndex) {
+  activeWizardEditorIndex = clientIndex;
+  renderClientGrid();
+}
+
+function ensureWizardEditorEventsBound() {
+  if (dom.wizardEditorCloseBtn && !dom.wizardEditorCloseBtn.dataset.bound) {
+    dom.wizardEditorCloseBtn.dataset.bound = "true";
+    dom.wizardEditorCloseBtn.addEventListener("click", () => closeWizardEditor());
+  }
+
+  if (dom.wizardEditorBackdrop && !dom.wizardEditorBackdrop.dataset.bound) {
+    dom.wizardEditorBackdrop.dataset.bound = "true";
+    dom.wizardEditorBackdrop.addEventListener("click", () => closeWizardEditor());
+  }
+}
+
+function renderWizardEditor() {
+  ensureWizardEditorEventsBound();
+
+  if (
+    activeWizardEditorIndex === null ||
+    activeWizardEditorIndex < 0 ||
+    activeWizardEditorIndex >= state.wizardClientCount ||
+    !dom.wizardEditorPanel ||
+    !dom.wizardEditorBackdrop ||
+    !dom.wizardEditorBody
+  ) {
+    closeWizardEditor();
+    return;
+  }
+
+  const clientIndex = activeWizardEditorIndex;
+  const selectedKey = state.wizardProviders[clientIndex];
+  const selectedProvider = providerCatalog[selectedKey] || {};
+  const selectedMeta = getProviderMeta(selectedKey, selectedProvider);
+  const isSelectedUnavailable = selectedProvider.available === false;
+
+  if (dom.wizardEditorEyebrow) {
+    dom.wizardEditorEyebrow.textContent = `Client ${clientIndex + 1}`;
+  }
+  if (dom.wizardEditorTitle) {
+    dom.wizardEditorTitle.textContent = selectedMeta.shortLabel;
+  }
+  dom.wizardEditorPanel.dataset.provider = selectedKey;
+
+  dom.wizardEditorBody.innerHTML = "";
+
+  const badgeRow = document.createElement("div");
+  badgeRow.className = "wizard-editor-badges";
+  badgeRow.innerHTML = `
+    <span class="wizard-provider-badge ${PROVIDER_STYLE[selectedKey]?.badge || "bg-zinc-800 text-zinc-300"}">
+      <i class="bi ${selectedMeta.icon}"></i>
+      <span>${selectedMeta.shortLabel}</span>
+    </span>
+  `;
+
+  const fieldWrap = document.createElement("div");
+  fieldWrap.className = "wizard-editor-section";
+  fieldWrap.innerHTML = `
+    <div class="wizard-editor-label-row">
+      <span class="wizard-field-label">${selectedKey === "terminal" ? "Comando / argomenti" : "Argomenti"}</span>
+      <span class="wizard-editor-hint">Opzionale</span>
+    </div>
+  `;
+
+  const inlineInput = document.createElement("input");
+  inlineInput.type = "text";
+  inlineInput.className = "wizard-input wizard-input-mono";
+  inlineInput.placeholder = selectedMeta.inlinePlaceholder;
+  inlineInput.value = state.wizardInlineArgs[clientIndex] || "";
+  inlineInput.addEventListener("input", () => {
+    state.wizardInlineArgs[clientIndex] = inlineInput.value;
+    renderClientGrid();
+  });
+  fieldWrap.append(inlineInput);
+
+  const composerWrap = document.createElement("div");
+  composerWrap.className = "wizard-editor-section";
+  composerWrap.innerHTML = `
+    <div class="wizard-editor-label-row">
+      <span class="wizard-field-label">Preset parametri</span>
+    </div>
+  `;
+
+  if (isSelectedUnavailable) {
+    const unavailableHint = document.createElement("div");
+    unavailableHint.className = "wizard-warning-box";
+    unavailableHint.innerHTML = `
+      <i class="bi bi-exclamation-triangle"></i>
+      <p>${selectedProvider.availabilityMessage || "Provider CLI non rilevato su questo sistema."}</p>
+    `;
+    composerWrap.append(unavailableHint);
+  }
+
+  const composer = buildInlineComposer(selectedKey, clientIndex, inlineInput, () => {
+    state.wizardInlineArgs[clientIndex] = inlineInput.value;
+    renderClientGrid();
+  });
+
+  if (composer) {
+    composerWrap.append(composer);
+  } else {
+    const empty = document.createElement("div");
+    empty.className = "wizard-inline-empty";
+    empty.textContent = "Nessun preset disponibile";
+    composerWrap.append(empty);
+  }
+
+  dom.wizardEditorBody.append(badgeRow, fieldWrap, composerWrap);
+  dom.wizardEditorBackdrop.classList.remove("hidden");
+  dom.wizardEditorPanel.classList.remove("hidden");
+  dom.wizardEditorPanel.setAttribute("aria-hidden", "false");
+}
+
+function renderQuickSelect(providerEntries) {
+  dom.quickSelect.innerHTML = "";
+
+  for (const [key, provider] of providerEntries) {
+    const meta = getProviderMeta(key, provider);
+    const isUnavailable = provider?.available === false;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = isUnavailable
+      ? "wizard-provider-shortcut opacity-55 cursor-not-allowed"
+      : "wizard-provider-shortcut";
+    button.dataset.provider = key;
+    button.disabled = isUnavailable;
+    button.title = isUnavailable
+      ? `${meta.shortLabel} non disponibile`
+      : `Assegna ${meta.shortLabel} a tutti i client`;
+
+    button.innerHTML = `
+      <div class="wizard-provider-shortcut-top">
+        <i class="bi ${meta.icon} wizard-provider-shortcut-icon"></i>
+      </div>
+      <div class="wizard-provider-shortcut-body">
+        <p class="wizard-provider-shortcut-name">${meta.shortLabel}</p>
+        <p class="wizard-provider-shortcut-action">${isUnavailable ? "Non disponibile" : "Clicca per usare su tutti i client"}</p>
+      </div>
+      <div class="wizard-provider-shortcut-meta">
+        <span><i class="bi bi-people"></i>${state.wizardClientCount} client</span>
+      </div>
+    `;
+
+    button.addEventListener("click", () => {
+      state.wizardProviders.fill(key);
+      state.wizardInlineArgs.fill(state.wizardBulkInlineArgs[key] || "");
+      renderClientGrid();
+    });
+
+    dom.quickSelect.append(button);
+  }
+}
+
 function renderBulkFlagsPanel(providerEntries) {
   if (!dom.bulkFlags) return;
 
   normalizeBulkInlineArgs(providerEntries);
   dom.bulkFlags.innerHTML = "";
 
-  const panel = document.createElement("div");
-  panel.className = "bg-th-card border border-th-border-lt rounded-xl p-3";
+  const panel = document.createElement("details");
+  panel.className = "wizard-panel wizard-panel-min th-accordion wizard-accordion";
 
-  const head = document.createElement("div");
-  head.className = "mb-2";
-
-  const title = document.createElement("p");
-  title.className = "text-xs font-semibold uppercase tracking-wider text-zinc-500";
-  title.textContent = "Flag globali per tipo";
-
-  const subtitle = document.createElement("p");
-  subtitle.className = "text-[10px] text-zinc-600 mt-1";
-  subtitle.textContent = "Applica in blocco argomenti/comandi a tutti i client dello stesso provider.";
-
-  head.append(title, subtitle);
+  const head = document.createElement("summary");
+  head.className = "wizard-panel-head wizard-panel-head-min wizard-accordion-summary";
+  head.innerHTML = `
+    <div>
+      <p class="wizard-eyebrow">Regole per provider</p>
+      <h3 class="wizard-panel-title">Argomenti globali</h3>
+    </div>
+    <i class="bi bi-chevron-down th-accordion-chevron wizard-accordion-chevron"></i>
+  `;
 
   const grid = document.createElement("div");
-  grid.className = "grid grid-cols-1 md:grid-cols-2 gap-2";
+  grid.className = "wizard-bulk-grid";
 
   for (const [providerKey, provider] of providerEntries) {
+    const meta = getProviderMeta(providerKey, provider);
     const isUnavailable = provider?.available === false;
-    const row = document.createElement("div");
-    row.className =
-      "grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 bg-th-bg border border-th-border-lt rounded-lg px-2 py-1.5 min-w-0";
 
-    const label = document.createElement("span");
-    label.className = `inline-flex items-center justify-center w-24 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${PROVIDER_STYLE[providerKey]?.badge || "text-zinc-400 bg-zinc-800"}`;
-    label.textContent = provider.label.replace(" CLI", "");
+    const card = document.createElement("div");
+    card.className = "wizard-bulk-card wizard-bulk-card-min";
+    if (!isUnavailable) {
+      card.classList.add("wizard-bulk-card-clickable");
+      card.title = `Applica questi argomenti a tutti i client ${meta.shortLabel}`;
+    }
+
+    const top = document.createElement("div");
+    top.className = "wizard-bulk-top";
+    top.innerHTML = `
+      <div class="min-w-0 flex items-center gap-2">
+        <span class="wizard-provider-badge ${PROVIDER_STYLE[providerKey]?.badge || "bg-zinc-800 text-zinc-300"}">
+          <i class="bi ${meta.icon}"></i>
+          <span>${meta.shortLabel}</span>
+        </span>
+      </div>
+    `;
+
+    const field = document.createElement("div");
+    field.className = "wizard-bulk-field";
+
+    const inputRow = document.createElement("div");
+    inputRow.className = "wizard-bulk-input-row";
 
     const input = document.createElement("input");
     input.type = "text";
-    input.className =
-      "w-full min-w-0 bg-th-card border border-th-border-lt rounded-md px-2 py-1 text-[10px] font-mono text-zinc-300 outline-none";
-    input.placeholder =
-      providerKey === "terminal"
-        ? "Comando per tutti i terminali normali"
-        : "Flag per tutti i terminali di questo tipo";
+    input.className = "wizard-input wizard-input-mono";
+    input.placeholder = isUnavailable ? "Provider non disponibile" : meta.bulkPlaceholder;
     input.value = state.wizardBulkInlineArgs[providerKey] || "";
     input.disabled = isUnavailable;
-    if (isUnavailable) {
-      input.placeholder = "Provider non disponibile";
-      input.classList.add("opacity-50", "cursor-not-allowed");
-    }
-
-    const applyBtn = document.createElement("button");
-    applyBtn.className =
-      `px-2 py-1 rounded-md text-[10px] font-semibold border cursor-pointer transition-all duration-150 ${getProviderActionClass(providerKey)}`;
-    applyBtn.textContent = "Applica";
-    applyBtn.disabled = isUnavailable;
-    if (isUnavailable) {
-      applyBtn.className =
-        "px-2 py-1 rounded-md text-[10px] font-semibold border border-zinc-700 text-zinc-600 cursor-not-allowed opacity-60";
-    }
 
     const apply = () => {
       state.wizardBulkInlineArgs[providerKey] = input.value;
@@ -294,16 +520,28 @@ function renderBulkFlagsPanel(providerEntries) {
     input.addEventListener("input", () => {
       state.wizardBulkInlineArgs[providerKey] = input.value;
     });
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
+    input.addEventListener("click", (event) => event.stopPropagation());
+
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
         apply();
       }
     });
-    applyBtn.addEventListener("click", apply);
+    inputRow.addEventListener("click", (event) => event.stopPropagation());
 
-    row.append(label, input, applyBtn);
-    grid.append(row);
+    const helper = document.createElement("p");
+    helper.className = "wizard-bulk-apply-note";
+    helper.textContent = isUnavailable ? "Provider non disponibile" : `Click sulla card per applicare a tutti i ${meta.shortLabel}`;
+
+    if (!isUnavailable) {
+      card.addEventListener("click", apply);
+    }
+
+    inputRow.append(input);
+    field.append(inputRow);
+    card.append(top, field, helper);
+    grid.append(card);
   }
 
   panel.append(head, grid);
@@ -315,122 +553,116 @@ export function buildStep2() {
   const providerEntries = Object.entries(providerCatalog);
   normalizeBulkInlineArgs(providerEntries);
 
-  dom.quickSelect.innerHTML = "";
-  for (const [key, prov] of providerEntries) {
-    const isUnavailable = prov?.available === false;
-    const btn = document.createElement("button");
-    btn.className = isUnavailable
-      ? "py-[7px] px-[18px] rounded-full text-xs font-semibold border border-zinc-800 bg-th-card text-zinc-600 cursor-not-allowed opacity-60"
-      : `py-[7px] px-[18px] rounded-full text-xs font-semibold border border-th-border-lt bg-th-card cursor-pointer transition-all duration-150 hover:-translate-y-px ${PROVIDER_STYLE[key]?.quick || ""}`;
-    const shortName = prov.label.replace(" CLI", "");
-    btn.innerHTML = isUnavailable
-      ? `<i class="bi bi-slash-circle"></i> ${shortName} mancante`
-      : `<i class="bi bi-check2-all"></i> Tutti: ${shortName}`;
-    btn.disabled = isUnavailable;
-    btn.addEventListener("click", () => {
-      state.wizardProviders.fill(key);
-      state.wizardInlineArgs.fill(state.wizardBulkInlineArgs[key] || "");
-      renderClientGrid();
-    });
-    dom.quickSelect.append(btn);
-  }
-
+  renderQuickSelect(providerEntries);
   renderBulkFlagsPanel(providerEntries);
   renderClientGrid();
+}
+
+function buildSelectionOption(providerEntries, selectedKey, clientIndex, providerKey, provider) {
+  const meta = getProviderMeta(providerKey, provider);
+  const isSelected = selectedKey === providerKey;
+  const isUnavailable = provider?.available === false;
+  const button = document.createElement("button");
+  button.type = "button";
+
+  button.className = isUnavailable
+    ? "wizard-provider-pill opacity-55 cursor-not-allowed"
+    : `wizard-provider-pill ${isSelected ? "is-selected" : ""}`;
+  button.disabled = isUnavailable;
+  button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+
+  button.innerHTML = `
+    <span class="wizard-provider-badge ${PROVIDER_STYLE[providerKey]?.badge || "bg-zinc-800 text-zinc-300"}">
+      <i class="bi ${meta.icon}"></i>
+      <span>${meta.shortLabel}</span>
+    </span>
+    <span class="wizard-provider-check ${isSelected ? "is-active" : ""}">
+      <i class="bi ${isSelected ? "bi-check-lg" : "bi-plus"}"></i>
+    </span>
+  `;
+
+  button.addEventListener("click", () => {
+    state.wizardProviders[clientIndex] = providerKey;
+    state.wizardInlineArgs[clientIndex] = state.wizardBulkInlineArgs[providerKey] || "";
+    renderClientGrid();
+  });
+
+  return button;
 }
 
 export function renderClientGrid() {
   state.wizardInlineArgs = normalizeInlineArgs(state.wizardInlineArgs, state.wizardClientCount);
   const providerEntries = Object.entries(providerCatalog);
-  const providerCount = providerEntries.length;
-  const optionCols = providerCount >= 3 ? 2 : Math.max(providerCount, 1);
-
-  const cols =
-    state.wizardClientCount === 1
-      ? 1
-      : state.wizardClientCount <= 4
-        ? 2
-        : state.wizardClientCount <= 8
-          ? 4
-          : 4;
-  dom.clientGrid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
   dom.clientGrid.innerHTML = "";
+  dom.clientGrid.style.gridTemplateColumns = "1fr";
+  dom.clientGrid.dataset.density = state.wizardClientCount >= 16 ? "dense" : "compact";
+
+  if (!providerEntries.length) {
+    const empty = document.createElement("div");
+    empty.className = "wizard-empty-state";
+    empty.innerHTML = `
+      <i class="bi bi-exclamation-diamond"></i>
+      <div>
+        <p class="wizard-panel-title">Provider non disponibili</p>
+        <p class="wizard-panel-copy">Impossibile costruire la schermata finche il catalogo provider non viene caricato.</p>
+      </div>
+    `;
+    dom.clientGrid.append(empty);
+    return;
+  }
+
+  const header = document.createElement("div");
+  header.className = "wizard-client-row wizard-client-row-head";
+  header.innerHTML = `
+    <div class="wizard-client-col wizard-client-col-id">#</div>
+    <div class="wizard-client-col wizard-client-col-provider">Provider</div>
+    <div class="wizard-client-col wizard-client-col-config">Configurazione</div>
+  `;
+  dom.clientGrid.append(header);
 
   for (let i = 0; i < state.wizardClientCount; i++) {
     const selectedKey = state.wizardProviders[i];
     const selectedProvider = providerCatalog[selectedKey] || {};
-    const isSelectedUnavailable = selectedProvider.available === false;
+    const selectedMeta = getProviderMeta(selectedKey, selectedProvider);
 
-    const card = document.createElement("div");
-    card.className = isSelectedUnavailable
-      ? "flex flex-col items-stretch px-2.5 py-3 bg-th-card border border-red-500/30 rounded-xl gap-2 min-w-0 transition-[border-color,box-shadow] duration-200"
-      : `flex flex-col items-stretch px-2.5 py-3 bg-th-card border rounded-xl gap-2 min-w-0 transition-[border-color,box-shadow] duration-200 ${PROVIDER_STYLE[selectedKey]?.card || "border-th-border"}`;
+    const row = document.createElement("article");
+    row.className = "wizard-client-row";
 
-    const label = document.createElement("span");
-    label.className = "text-[11px] font-bold text-zinc-600 tracking-wide";
-    label.textContent = `#${i + 1}`;
-    label.style.alignSelf = "center";
-
-    const options = document.createElement("div");
-    options.className = "grid gap-1 w-full";
-    options.style.gridTemplateColumns = `repeat(${optionCols}, minmax(0, 1fr))`;
-
-    for (const [key, prov] of providerEntries) {
-      const isUnavailable = prov?.available === false;
-      const toggle = document.createElement("button");
-      const isSelected = selectedKey === key;
-      const shortName = prov.label.replace(" CLI", "");
-      toggle.className = isUnavailable
-        ? "w-full min-w-0 truncate px-2.5 py-[5px] rounded-md text-[11px] font-semibold border border-zinc-800 bg-th-bg text-zinc-600 cursor-not-allowed opacity-60"
-        : `w-full min-w-0 truncate px-2.5 py-[5px] rounded-md text-[11px] font-semibold border cursor-pointer transition-all duration-150 ${
-            isSelected
-              ? PROVIDER_STYLE[key]?.toggle || ""
-              : "border-transparent bg-th-bg text-zinc-600 hover:text-zinc-400 hover:bg-th-hover"
-          }`;
-      toggle.textContent = isUnavailable ? `${shortName} (manca)` : shortName;
-      toggle.disabled = isUnavailable;
-      toggle.addEventListener("click", () => {
-        state.wizardProviders[i] = key;
-        state.wizardInlineArgs[i] = state.wizardBulkInlineArgs[key] || "";
-        renderClientGrid();
-      });
-      options.append(toggle);
+    const selector = document.createElement("div");
+    selector.className = "wizard-provider-pill-group";
+    for (const [providerKey, provider] of providerEntries) {
+      selector.append(buildSelectionOption(providerEntries, selectedKey, i, providerKey, provider));
     }
 
-    const inlineWrap = document.createElement("div");
-    inlineWrap.className = "w-full flex flex-col gap-1";
+    const idCell = document.createElement("div");
+    idCell.className = "wizard-client-col wizard-client-col-id";
+    idCell.innerHTML = `<span class="wizard-client-index">#${i + 1}</span>`;
 
-    const inlineLabel = document.createElement("span");
-    inlineLabel.className = "text-[9px] font-semibold text-zinc-600 uppercase tracking-wide";
-    inlineLabel.textContent = selectedKey === "terminal" ? "Comando Inline" : "Argomenti Inline";
+    const providerCell = document.createElement("div");
+    providerCell.className = "wizard-client-col wizard-client-col-provider";
+    providerCell.append(selector);
 
-    const inlineInput = document.createElement("input");
-    inlineInput.type = "text";
-    inlineInput.className =
-      "w-full min-w-0 bg-th-bg border border-th-border-lt rounded-md px-2 py-1 text-[10px] font-mono text-zinc-300 outline-none";
-    inlineInput.placeholder =
-      selectedKey === "terminal"
-        ? "es: npm run dev"
-        : "es: --model gpt-5-codex --approval_policy on-request";
-    inlineInput.value = state.wizardInlineArgs[i] || "";
-    inlineInput.addEventListener("input", () => {
-      state.wizardInlineArgs[i] = inlineInput.value;
-    });
+    const configCell = document.createElement("div");
+    configCell.className = "wizard-client-col wizard-client-col-config";
 
-    inlineWrap.append(inlineLabel, inlineInput);
+    const configButton = document.createElement("button");
+    configButton.type = "button";
+    configButton.className = `wizard-config-trigger ${activeWizardEditorIndex === i ? "is-active" : ""}`;
+    configButton.innerHTML = `
+      <span class="wizard-config-trigger-copy">
+        <span class="wizard-config-trigger-title">Configura</span>
+        <span class="wizard-config-trigger-summary">${getArgsSummary(state.wizardInlineArgs[i], selectedKey)}</span>
+      </span>
+      <span class="wizard-config-trigger-icon">
+        <i class="bi bi-sliders2"></i>
+      </span>
+    `;
+    configButton.addEventListener("click", () => openWizardEditor(i));
+    configCell.append(configButton);
 
-    if (isSelectedUnavailable) {
-      const unavailableHint = document.createElement("p");
-      unavailableHint.className = "w-full text-[10px] text-red-300";
-      unavailableHint.textContent =
-        selectedProvider.availabilityMessage || "Provider CLI non rilevato su questo sistema.";
-      inlineWrap.append(unavailableHint);
-    }
-
-    const composer = buildInlineComposer(selectedKey, i, inlineInput);
-    if (composer) inlineWrap.append(composer);
-
-    card.append(label, options, inlineWrap);
-    dom.clientGrid.append(card);
+    row.append(idCell, providerCell, configCell);
+    dom.clientGrid.append(row);
   }
+
+  renderWizardEditor();
 }

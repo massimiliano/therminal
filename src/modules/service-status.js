@@ -84,7 +84,6 @@ function renderLoadingState() {
         <span class="th-skeleton th-skeleton-line h-[11px] w-4/5"></span>
       </div>
       <div class="mt-4 flex items-center justify-between gap-3">
-        <span class="th-skeleton th-skeleton-line h-[10px] w-16"></span>
         <span class="th-skeleton th-skeleton-line h-[10px] w-24"></span>
       </div>
     </article>
@@ -154,15 +153,12 @@ function buildServiceCard(service) {
   detail.textContent = service.detail || "Nessun dettaglio disponibile.";
 
   const foot = document.createElement("div");
-  foot.className = "mt-3 flex items-center justify-between gap-3 text-[11px] text-zinc-500";
-
-  const source = document.createElement("span");
-  source.textContent = service.sourceLabel || "Live";
+  foot.className = "mt-3 flex items-center justify-end gap-3 text-[11px] text-zinc-500";
 
   const checkedAt = document.createElement("span");
   checkedAt.textContent = `Check ${formatTimestamp(service.checkedAt)}`;
 
-  foot.append(source, checkedAt);
+  foot.append(checkedAt);
   card.append(head, detail, foot);
 
   return card;

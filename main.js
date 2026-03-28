@@ -58,11 +58,21 @@ const USAGE_CACHE_TTL_MS = 60000;
 const USAGE_PANEL_CACHE_TTL_MS = 240000;
 const SERVICE_STATUS_CACHE_TTL_MS = 240000;
 const PROVIDER_CACHE_TTL_MS = 15000;
+const STATUS_PAGE_RENDER_TIMEOUT_MS = 12000;
+const STATUS_PAGE_RENDER_SETTLE_MS = 2500;
+const DEFAULT_VOICE_PROVIDER = "local";
+const DEFAULT_GROQ_MODEL = "whisper-large-v3-turbo";
+const GROQ_STT_MODELS = new Set(["whisper-large-v3", "whisper-large-v3-turbo"]);
+const GROQ_TRANSCRIPTION_API_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
+const GROQ_REQUEST_TIMEOUT_MS = 120000;
 const DEFAULT_VOICE_CONFIG = Object.freeze({
+  provider: DEFAULT_VOICE_PROVIDER,
   whisperCliPath: "",
   modelPath: "",
   language: "it",
-  autoSubmit: false
+  autoSubmit: false,
+  groqApiKey: "",
+  groqModel: DEFAULT_GROQ_MODEL
 });
 const WHISPER_SERVER_HOST = "127.0.0.1";
 const WHISPER_SERVER_READY_TIMEOUT_MS = 25000;
@@ -240,17 +250,28 @@ function getVoiceConfigPath() {
 }
 
 function normalizeVoiceConfig(payload = {}) {
+  const provider =
+    typeof payload.provider === "string" && payload.provider.trim().toLowerCase() === "groq"
+      ? "groq"
+      : DEFAULT_VOICE_PROVIDER;
   const language =
     typeof payload.language === "string" && payload.language.trim().length > 0
       ? payload.language.trim()
       : DEFAULT_VOICE_CONFIG.language;
+  const groqModel =
+    typeof payload.groqModel === "string" && GROQ_STT_MODELS.has(payload.groqModel.trim())
+      ? payload.groqModel.trim()
+      : DEFAULT_VOICE_CONFIG.groqModel;
 
   return {
+    provider,
     whisperCliPath:
       typeof payload.whisperCliPath === "string" ? payload.whisperCliPath.trim() : "",
     modelPath: typeof payload.modelPath === "string" ? payload.modelPath.trim() : "",
     language,
-    autoSubmit: Boolean(payload.autoSubmit)
+    autoSubmit: Boolean(payload.autoSubmit),
+    groqApiKey: typeof payload.groqApiKey === "string" ? payload.groqApiKey.trim() : "",
+    groqModel
   };
 }
 
@@ -276,15 +297,22 @@ function saveVoiceConfigFile(payload) {
 }
 
 function isVoiceConfigReady(config = {}) {
-  return Boolean(config?.whisperCliPath && config?.modelPath);
+  const normalized = normalizeVoiceConfig(config);
+  if (normalized.provider === "groq") {
+    return Boolean(normalized.groqApiKey && normalized.groqModel);
+  }
+
+  return Boolean(normalized.whisperCliPath && normalized.modelPath);
 }
 
 function getVoiceRuntimeKey(payload = {}) {
   const config = normalizeVoiceConfig(payload);
   return JSON.stringify([
+    config.provider,
     config.whisperCliPath,
     config.modelPath,
-    String(config.language || DEFAULT_VOICE_CONFIG.language).toLowerCase()
+    String(config.language || DEFAULT_VOICE_CONFIG.language).toLowerCase(),
+    config.groqModel
   ]);
 }
 
@@ -317,6 +345,9 @@ function resolveWhisperServerPath(whisperCliPath) {
 
 function getResolvedVoiceRuntimeConfig(payload = loadVoiceConfigFile()) {
   const config = normalizeVoiceConfig(payload);
+  if (config.provider !== "local") {
+    throw new Error("Provider voice locale non selezionato.");
+  }
   const whisperCliPath = assertExistingFile(config.whisperCliPath, "whisper-cli");
   const modelPath = assertExistingFile(config.modelPath, "Modello Whisper");
   return {
@@ -335,6 +366,24 @@ function createWhisperServerRuntime() {
     port: 0,
     runtimeKey: "",
     readyPromise: null
+  };
+}
+
+function getResolvedGroqVoiceConfig(payload = loadVoiceConfigFile()) {
+  const config = normalizeVoiceConfig(payload);
+  if (config.provider !== "groq") {
+    throw new Error("Provider voice Groq non selezionato.");
+  }
+
+  const groqApiKey =
+    config.groqApiKey || (typeof process.env.GROQ_API_KEY === "string" ? process.env.GROQ_API_KEY.trim() : "");
+  if (!groqApiKey) {
+    throw new Error("Configura la Groq API key per usare il voice to text cloud.");
+  }
+
+  return {
+    ...config,
+    groqApiKey
   };
 }
 
@@ -764,11 +813,11 @@ async function transcribeWithWhisperServer(audioBuffer, runtimeConfig) {
 
 async function warmLocalWhisperModel() {
   const config = loadVoiceConfigFile();
-  if (!isVoiceConfigReady(config)) {
+  if (config.provider !== "local" || !isVoiceConfigReady(config)) {
     stopWhisperServerRuntime();
     return {
       warmed: false,
-      mode: "disabled",
+      mode: config.provider === "groq" ? "groq" : "disabled",
       persistentAvailable: false
     };
   }
@@ -825,6 +874,64 @@ async function transcribeWithLocalWhisper(audioBuffer) {
   }
 
   return await transcribeWithWhisperCli(audioBuffer, runtimeConfig);
+}
+
+async function transcribeWithGroq(audioBuffer) {
+  const runtimeConfig = getResolvedGroqVoiceConfig();
+  const formData = new FormData();
+  formData.set("file", new Blob([toBuffer(audioBuffer)], { type: "audio/wav" }), "audio.wav");
+  formData.set("model", runtimeConfig.groqModel);
+  formData.set("temperature", "0");
+  formData.set("response_format", "verbose_json");
+
+  if (runtimeConfig.language && runtimeConfig.language.toLowerCase() !== "auto") {
+    formData.set("language", runtimeConfig.language);
+  }
+
+  const response = await fetchWithTimeout(
+    GROQ_TRANSCRIPTION_API_URL,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${runtimeConfig.groqApiKey}`
+      },
+      body: formData
+    },
+    GROQ_REQUEST_TIMEOUT_MS
+  );
+
+  const responseText = await response.text();
+  let payload = null;
+  try {
+    payload = JSON.parse(responseText);
+  } catch {}
+
+  if (!response.ok) {
+    const apiMessage =
+      payload?.error?.message ||
+      payload?.message ||
+      responseText.trim() ||
+      `Trascrizione Groq fallita (HTTP ${response.status}).`;
+    throw new Error(apiMessage);
+  }
+
+  return {
+    text: normalizeTranscriptionText(payload?.text || ""),
+    language: payload?.language || runtimeConfig.language,
+    autoSubmit: runtimeConfig.autoSubmit,
+    provider: "groq",
+    model: runtimeConfig.groqModel
+  };
+}
+
+async function transcribeVoice(audioBuffer) {
+  const config = loadVoiceConfigFile();
+  if (config.provider === "groq") {
+    stopWhisperServerRuntime();
+    return await transcribeWithGroq(audioBuffer);
+  }
+
+  return await transcribeWithLocalWhisper(audioBuffer);
 }
 
 async function showOpenFileDialog(event, payload = {}) {
@@ -1860,7 +1967,7 @@ function buildCodexUsagePanelItem(summary, sourceLabel = "CLI /status") {
     status: "ok",
     sourceLabel,
     checkedAt: new Date().toISOString(),
-    summary: [summary?.model, summary?.account].filter(Boolean).join(" · ") || "OpenAI Codex",
+    summary: "Codex CLI",
     metrics: [
       {
         label: "5h limit",
@@ -2121,6 +2228,158 @@ async function fetchTextWithTimeout(url, timeoutMs = 8000) {
   }
 }
 
+function wait(timeoutMs) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, timeoutMs);
+  });
+}
+
+async function scrapeRenderedPageSnapshot(url, {
+  timeoutMs = STATUS_PAGE_RENDER_TIMEOUT_MS,
+  settleMs = STATUS_PAGE_RENDER_SETTLE_MS
+} = {}) {
+  let scraperWindow = null;
+
+  const destroyWindow = () => {
+    if (scraperWindow && !scraperWindow.isDestroyed()) {
+      scraperWindow.destroy();
+    }
+    scraperWindow = null;
+  };
+
+  try {
+    scraperWindow = new BrowserWindow({
+      show: false,
+      width: 1280,
+      height: 900,
+      webPreferences: {
+        sandbox: true,
+        contextIsolation: true,
+        nodeIntegration: false,
+        backgroundThrottling: false,
+        partition: `status-scrape-${crypto.randomUUID()}`
+      }
+    });
+
+    return await new Promise((resolve, reject) => {
+      let completed = false;
+
+      const finish = (error, result) => {
+        if (completed) {
+          return;
+        }
+        completed = true;
+        clearTimeout(timeout);
+        destroyWindow();
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(result);
+      };
+
+      const timeout = setTimeout(() => {
+        finish(new Error("Timeout during status page render."));
+      }, timeoutMs);
+
+      scraperWindow.webContents.once("did-fail-load", (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+        if (!isMainFrame) {
+          return;
+        }
+        finish(new Error(errorDescription || `Load failed (${errorCode}) for ${validatedURL || url}`));
+      });
+
+      scraperWindow.webContents.once("did-finish-load", async () => {
+        try {
+          await wait(settleMs);
+          const snapshot = await scraperWindow.webContents.executeJavaScript(`
+            (() => {
+              return {
+                html: document.documentElement ? document.documentElement.outerHTML : ""
+              };
+            })();
+          `, true);
+
+          finish(null, snapshot);
+        } catch (error) {
+          finish(error);
+        }
+      });
+
+      scraperWindow.loadURL(url).catch((error) => {
+        finish(error);
+      });
+    });
+  } finally {
+    destroyWindow();
+  }
+}
+
+function extractAiStudioStatusFromSnapshot(snapshot) {
+  const html = String(snapshot?.html || "");
+  const normalizedHtml = html.toLowerCase();
+
+  const decodeHtmlEntities = (value) => String(value || "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'");
+
+  const extractIncidentTitle = (testId) => {
+    const regex = new RegExp(
+      `<span[^>]*data-testid=["']${testId}["'][^>]*>([\\s\\S]*?)<\\/span>`,
+      "i"
+    );
+    const match = html.match(regex);
+    if (!match) {
+      return "";
+    }
+    return decodeHtmlEntities(match[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+  };
+
+  const partialOutageTitle = extractIncidentTitle("partial-outage-incident-title");
+  if (partialOutageTitle) {
+    return {
+      severity: "degraded",
+      label: "Partial outage",
+      detail: partialOutageTitle
+    };
+  }
+
+  const majorOutageTitle = extractIncidentTitle("major-outage-incident-title");
+  if (majorOutageTitle) {
+    return {
+      severity: "major",
+      label: "Major outage",
+      detail: majorOutageTitle
+    };
+  }
+
+  const incidentTitle = extractIncidentTitle("incident-title");
+  if (incidentTitle) {
+    return {
+      severity: "degraded",
+      label: "Incident reported",
+      detail: incidentTitle
+    };
+  }
+
+  if (!normalizedHtml) {
+    return null;
+  }
+
+  if (normalizedHtml.includes("all systems operational") || normalizedHtml.includes("no incidents reported")) {
+    return {
+      severity: "operational",
+      label: "All Systems Operational",
+      detail: "Nessun incidente segnalato."
+    };
+  }
+
+  return null;
+}
+
 function buildStatuspageStatus({ id, name, host, url, payload }) {
   const incidents = Array.isArray(payload?.incidents) ? payload.incidents : [];
   const activeIncidents = incidents.filter((incident) => incident?.status !== "resolved");
@@ -2231,24 +2490,34 @@ async function getClaudeServiceStatus() {
 async function getAiStudioServiceStatus() {
   const id = "aistudio";
   const name = "AI Studio";
-  const host = "aistudio.google.com";
-  const url = "https://aistudio.google.com";
+  const host = "aistudio.google.com/status";
+  const url = "https://aistudio.google.com/status";
 
   try {
-    const html = await fetchTextWithTimeout(url);
-    const hasGoogleShell = typeof html === "string" && html.toLowerCase().includes("<html");
+    const snapshot = await scrapeRenderedPageSnapshot(url);
+    const parsedStatus = extractAiStudioStatusFromSnapshot(snapshot);
+
+    if (parsedStatus) {
+      return {
+        id,
+        name,
+        host,
+        url,
+        ...parsedStatus,
+        sourceLabel: "Status page DOM",
+        checkedAt: new Date().toISOString()
+      };
+    }
 
     return {
       id,
       name,
       host,
       url,
-      severity: hasGoogleShell ? "operational" : "unknown",
-      label: hasGoogleShell ? "Reachable" : "Unknown",
-      detail: hasGoogleShell
-        ? "Homepage raggiungibile da Therminal."
-        : "Richiesta completata ma risposta non riconosciuta.",
-      sourceLabel: "Reachability check",
+      severity: "unknown",
+      label: "Status not exposed",
+      detail: "La status page e stata renderizzata, ma il DOM finale non espone uno stato leggibile in chiaro.",
+      sourceLabel: "Status page DOM",
       checkedAt: new Date().toISOString()
     };
   } catch (error) {
@@ -2258,7 +2527,7 @@ async function getAiStudioServiceStatus() {
       host,
       url,
       error,
-      sourceLabel: "Reachability check"
+      sourceLabel: "Status page"
     });
   }
 }
@@ -2658,5 +2927,6 @@ ipcMain.handle("voice:warmup", async () => {
   return await warmLocalWhisperModel();
 });
 ipcMain.handle("voice:transcribe", async (_event, payload = {}) => {
-  return await transcribeWithLocalWhisper(payload.audioData);
+  return await transcribeVoice(payload.audioData);
 });
+

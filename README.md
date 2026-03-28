@@ -125,21 +125,26 @@ L'output viene scritto in `dist/`.
 - riepilogo scorciatoie
 - descrizione funzioni principali
 - stato del rilevamento provider anche se il banner home e stato chiuso
-- configurazione voice to text locale con `whisper.cpp`
+- configurazione voice to text con `whisper.cpp` locale oppure Groq cloud
 
-## Voice To Text Locale
+## Voice To Text
 
-Therminal puo usare un binario locale compatibile con `whisper.cpp` per dettare testo senza cloud:
+Therminal puo usare due modalita di speech-to-text:
+
+- `Whisper locale` con un binario compatibile `whisper.cpp`
+- `Groq cloud` con i modelli `whisper-large-v3` e `whisper-large-v3-turbo`
 
 1. Apri la modale scorciatoie con `Ctrl + /`.
-2. Imposta il path di `whisper-cli.exe`.
-3. Imposta il path del modello `.bin`.
-4. Scegli la lingua (`it` oppure `auto`) e se inviare `Enter` in automatico.
-5. Salva la configurazione.
-6. In un workspace attivo tieni premuto `Shift + Alt + Z`, parla e rilascia per trascrivere.
+2. Scegli il provider voice.
+3. Se usi `Whisper locale`, imposta il path di `whisper-cli.exe` e del modello `.bin`.
+4. Se usi `Groq`, inserisci la tua API key e scegli `whisper-large-v3` oppure `whisper-large-v3-turbo`.
+5. Scegli la lingua (`it` oppure `auto`) e se inviare `Enter` in automatico.
+6. Salva la configurazione.
+7. In un workspace attivo tieni premuto `Shift + Alt + Z`, parla e rilascia per trascrivere.
 
 Suggerimento pratico: per velocita su CPU Windows conviene partire da un modello `tiny` o `base`.
 Se nello stesso folder di `whisper-cli.exe` e presente anche `whisper-server.exe`, Therminal lo avvia in background e mantiene il modello residente in memoria per ridurre la latenza delle trascrizioni successive. In assenza del server continua a usare il flusso compatibile `whisper-cli` per ogni richiesta.
+Con Groq non c'e warmup locale: la trascrizione viene inviata all'endpoint cloud configurato tramite API key.
 
 ## Struttura del progetto
 

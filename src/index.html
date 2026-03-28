@@ -358,72 +358,78 @@
           </div>
         </div>
 
-        <div id="step2" class="hidden w-full max-w-5xl mx-auto min-w-0">
-          <div class="text-center mb-8">
-            <h2 class="text-xl font-bold text-white mb-1">Scegli i provider</h2>
-            <p class="text-zinc-500 text-sm">
-              Assegna un provider a ciascun client
-            </p>
-          </div>
+        <div id="step2" class="hidden w-full max-w-[1500px] mx-auto min-w-0 px-4 xl:px-6">
+          <div class="wizard-shell wizard-shell-compact">
+            <section class="wizard-panel wizard-panel-toolbar">
+              <div class="wizard-panel-head wizard-panel-head-compact">
+                <div>
+                  <p class="wizard-eyebrow">Client Setup</p>
+                  <h2 class="wizard-panel-title">Configura i client</h2>
+                </div>
+              </div>
+              <div id="quickSelect" class="wizard-provider-shortcuts wizard-provider-shortcuts-compact"></div>
+            </section>
 
-          <div class="flex flex-wrap justify-center gap-3 mb-6" id="quickSelect"></div>
+            <div id="bulkFlags"></div>
 
-          <div id="bulkFlags" class="mb-5"></div>
+            <section class="wizard-panel wizard-clients-panel">
+              <div id="clientGrid" class="wizard-client-list wizard-client-list-compact"></div>
+            </section>
 
-          <div
-            id="clientGrid"
-            class="grid gap-3 mb-8 max-h-[50vh] overflow-y-auto overflow-x-hidden pr-1 min-w-0"
-          ></div>
+            <section class="wizard-panel wizard-footer-panel">
+              <div class="wizard-footer-row">
+                <div class="wizard-footer-field">
+                  <label class="wizard-field-label" for="cwdInput">Working directory</label>
+                  <input
+                    id="cwdInput"
+                    type="text"
+                    value="."
+                    placeholder="Scrivi o incolla un path"
+                    class="wizard-input wizard-input-mono"
+                  />
+                </div>
+                <button
+                  id="cwdBrowseBtn"
+                  type="button"
+                  class="wizard-secondary-btn"
+                  title="Apri selettore directory"
+                >
+                  <i class="bi bi-folder2-open"></i>
+                  <span>Sfoglia</span>
+                </button>
+              </div>
 
-          <div class="max-w-md mx-auto mb-8">
-            <label
-              class="block text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2"
-              >Working Directory</label
-            >
-            <div class="flex items-center gap-2">
-              <input
-                id="cwdInput"
-                type="text"
-                value="."
-                placeholder="Scrivi o incolla un path"
-                class="flex-1 min-w-0 bg-zinc-900 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm font-mono text-zinc-300 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20"
-              />
-              <button
-                id="cwdBrowseBtn"
-                type="button"
-                class="shrink-0 flex items-center gap-2 border border-zinc-700/50 hover:border-emerald-500/50 text-zinc-300 hover:text-white px-3 py-2 rounded-lg text-sm transition-colors"
-                title="Apri selettore directory"
-              >
-                <i class="bi bi-folder2-open"></i>
-                <span>Sfoglia</span>
-              </button>
-            </div>
-            <p class="mt-2 text-[11px] text-zinc-600">
-              Puoi scrivere o incollare il path, oppure scegliere la cartella da una finestra.
-            </p>
-          </div>
+              <div class="wizard-footer-actions">
+                <button id="backBtn" class="wizard-back-btn wizard-back-btn-inline">
+                  <i class="bi bi-arrow-left"></i>
+                  <span>Indietro</span>
+                </button>
+                <div class="wizard-footer-cta">
+                  <button id="savePresetBtn" class="wizard-secondary-btn">
+                    <i class="bi bi-bookmark-plus"></i>
+                    <span>Salva preset</span>
+                  </button>
+                  <button id="launchBtn" class="wizard-primary-btn">
+                    <span>Avvia</span>
+                    <i class="bi bi-play-fill"></i>
+                  </button>
+                </div>
+              </div>
+            </section>
 
-          <div class="flex justify-between items-center max-w-md mx-auto">
-            <button
-              id="backBtn"
-              class="flex items-center gap-2 text-zinc-400 hover:text-white transition-colors text-sm"
-            >
-              <i class="bi bi-arrow-left"></i> Indietro
-            </button>
-            <div class="flex items-center gap-2">
-              <button
-                id="savePresetBtn"
-                class="flex items-center gap-2 border border-zinc-700/50 hover:border-emerald-500/50 text-zinc-400 hover:text-white px-4 py-2.5 rounded-lg text-sm transition-colors"
-              >
-                <i class="bi bi-bookmark-plus"></i> Salva Preset
-              </button>
-              <button
-                id="launchBtn"
-                class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg font-semibold text-sm transition-colors"
-              >
-                Avvia <i class="bi bi-play-fill"></i>
-              </button>
-            </div>
+            <div id="wizardEditorBackdrop" class="wizard-editor-backdrop hidden"></div>
+            <aside id="wizardEditorPanel" class="wizard-editor-panel hidden" aria-hidden="true">
+              <div class="wizard-editor-head">
+                <div class="min-w-0">
+                  <p id="wizardEditorEyebrow" class="wizard-eyebrow">Client</p>
+                  <h3 id="wizardEditorTitle" class="wizard-panel-title">Configura client</h3>
+                </div>
+                <button id="wizardEditorCloseBtn" type="button" class="wizard-editor-close" title="Chiudi configurazione">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+              <div id="wizardEditorBody" class="wizard-editor-body"></div>
+            </aside>
           </div>
         </div>
       </div>
@@ -612,10 +618,10 @@
                 <h3
                   class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest"
                 >
-                  Voice To Text Locale
+                  Voice To Text
                 </h3>
                 <p class="text-xs text-zinc-500 mt-1">
-                  Configura un binario compatibile con whisper.cpp e un modello locale leggero.
+                  Scegli tra Whisper locale via `whisper.cpp` oppure Groq cloud.
                 </p>
               </div>
               <span
@@ -628,10 +634,24 @@
             </div>
 
             <p id="voiceStatusText" class="text-xs text-zinc-500 leading-relaxed mb-3">
-              Seleziona `whisper-cli.exe` e un modello `.bin`. Poi tieni premuto Shift+Alt+Z per registrare e rilascia per trascrivere nella sessione attiva.
+              Configura il provider voice e poi tieni premuto Shift+Alt+Z per registrare e rilasciare la trascrizione nella sessione attiva.
             </p>
 
             <div class="flex flex-col gap-3">
+              <label class="block">
+                <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                  Provider
+                </span>
+                <select
+                  id="voiceProviderSelect"
+                  class="w-full bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-xs font-mono text-th-fg outline-none focus:border-emerald-400/35"
+                >
+                  <option value="local">Whisper locale</option>
+                  <option value="groq">Groq cloud</option>
+                </select>
+              </label>
+
+              <div id="voiceLocalFields" class="flex flex-col gap-3">
               <label class="block">
                 <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
                   Binario whisper.cpp
@@ -673,6 +693,40 @@
                   </button>
                 </div>
               </label>
+              </div>
+
+              <div id="voiceGroqFields" class="hidden flex flex-col gap-3">
+                <label class="block">
+                  <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                    Groq API key
+                  </span>
+                  <input
+                    id="voiceGroqApiKeyInput"
+                    type="password"
+                    placeholder="gsk_..."
+                    autocomplete="off"
+                    spellcheck="false"
+                    class="w-full bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-xs font-mono text-th-fg outline-none focus:border-emerald-400/35"
+                  />
+                </label>
+
+                <label class="block">
+                  <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                    Modello Groq
+                  </span>
+                  <select
+                    id="voiceGroqModelSelect"
+                    class="w-full bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-xs font-mono text-th-fg outline-none focus:border-emerald-400/35"
+                  >
+                    <option value="whisper-large-v3-turbo">whisper-large-v3-turbo</option>
+                    <option value="whisper-large-v3">whisper-large-v3</option>
+                  </select>
+                </label>
+
+                <p class="text-[11px] text-zinc-600 leading-relaxed">
+                  Usa Groq per una trascrizione cloud veloce. Devi impostare una API key valida prima di usare il push-to-talk.
+                </p>
+              </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,180px)_1fr] gap-3">
                 <label class="block">
@@ -701,7 +755,7 @@
 
               <div class="flex items-center justify-between gap-3">
                 <p class="text-[11px] text-zinc-600 leading-relaxed">
-                  Per velocita su CPU usa un modello tiny o base. Se `whisper-server.exe` e presente accanto a `whisper-cli.exe`, Therminal lo tiene caldo in memoria per ridurre la latenza.
+                  In locale conviene partire da un modello CPU leggero. Con Groq puoi scegliere `whisper-large-v3` oppure `whisper-large-v3-turbo`.
                 </p>
                 <button
                   id="voiceSaveSettingsBtn"
