@@ -15,6 +15,7 @@ import { hideNotice, showNotice } from "./notices.js";
 import { dismissProviderAvailabilityBanner, refreshProviderCatalog } from "./providers.js";
 import { closeNameModal, openNameModal } from "./name-modal.js";
 import { initAddTerminalMenu, openAddTerminalMenu } from "./add-terminal-menu.js";
+import { openCliOperationsModal } from "./cli-operations.js";
 
 export function bindIpcEvents() {
   window.launcherAPI.onSessionData((payload) => {
@@ -124,6 +125,7 @@ export function bindUiEvents() {
   });
 
   dom.broadcastToggle.addEventListener("click", () => toggleBroadcast());
+  dom.operationsToggle?.addEventListener("click", () => openCliOperationsModal());
   dom.broadcastInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       const text = dom.broadcastInput.value;

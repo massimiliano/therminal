@@ -27,6 +27,11 @@ contextBridge.exposeInMainWorld("launcherAPI", {
   savePreset: (name, config) => ipcRenderer.invoke("presets:save", { name, config }),
   deletePreset: (name) => ipcRenderer.invoke("presets:delete", name),
 
+  // App config
+  getAppConfig: () => ipcRenderer.invoke("app-config:get"),
+  saveShortcutConfig: (payload) => ipcRenderer.invoke("app-config:save-shortcuts", payload),
+  saveMessagePresets: (payload) => ipcRenderer.invoke("app-config:save-message-presets", payload),
+
   // System
   getSystemMetrics: () => ipcRenderer.invoke("system:metrics"),
   getUsageSummary: () => ipcRenderer.invoke("usage:summary"),

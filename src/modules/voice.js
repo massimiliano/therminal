@@ -1,8 +1,9 @@
 import { dom } from "./dom.js";
 import { state, sessionStore, workspaces } from "./state.js";
 import { hideNotice, showNotice } from "./notices.js";
+import { getShortcutValue } from "./app-config.js";
+import { formatShortcutLabel, parseShortcut, shortcutMatchesEvent } from "./shortcut-utils.js";
 
-const PUSH_TO_TALK_KEYS = new Set(["KeyZ", "AltLeft", "AltRight", "ShiftLeft", "ShiftRight"]);
 const TARGET_SAMPLE_RATE = 16000;
 const MIN_RECORDING_MS = 180;
 const DEFAULT_VOICE_PROVIDER = "local";
@@ -65,11 +66,12 @@ function getVoiceConfigRequirementText(config = voiceConfig) {
 }
 
 function getReadyVoiceDetail(config = voiceConfig) {
+  const shortcutLabel = formatShortcutLabel(getShortcutValue("pushToTalk"));
   if (isGroqVoiceProvider(config)) {
-    return `Tieni premuto Shift+Alt+Z nella finestra di Therminal per dettare via Groq (${config.groqModel || DEFAULT_GROQ_MODEL}).`;
+    return `Tieni premuto ${shortcutLabel} nella finestra di Therminal per dettare via Groq (${config.groqModel || DEFAULT_GROQ_MODEL}).`;
   }
 
-  return "Tieni premuto Shift+Alt+Z nella finestra di Therminal per dettare nella sessione attiva.";
+  return `Tieni premuto ${shortcutLabel} nella finestra di Therminal per dettare nella sessione attiva.`;
 }
 
 function getTranscribingVoiceDetail(config = voiceConfig) {
@@ -99,10 +101,11 @@ function truncateText(text, maxLength = 120) {
 }
 
 function getVoiceStatusMeta() {
+  const shortcutLabel = formatShortcutLabel(getShortcutValue("pushToTalk"));
   if (voiceCapture.phase === "recording") {
     return {
       label: "In ascolto",
-      detail: "Microfono attivo. Rilascia Shift+Alt+Z per fermare e trascrivere.",
+      detail: `Microfono attivo. Rilascia ${shortcutLabel} per fermare e trascrivere.`,
       badgeClass: "border-red-500/35 bg-red-500/10 text-red-200",
       dotClass: "bg-red-400",
       toolbarClass: "border-red-500/35 bg-red-500/10 text-red-200",
@@ -280,23 +283,74 @@ async function saveVoiceSettings() {
 }
 
 function matchesPushToTalkShortcut(event) {
-  return (
-    event.code === "KeyZ" &&
-    event.shiftKey &&
-    event.altKey &&
-    !event.ctrlKey &&
-    !event.metaKey
-  );
+  return shortcutMatchesEvent(event, getShortcutValue("pushToTalk"));
 }
 
 function isPushToTalkKey(event) {
-  return PUSH_TO_TALK_KEYS.has(event.code);
+  const parsed = parseShortcut(getShortcutValue("pushToTalk"));
+  if (!parsed) {
+    return false;
+  }
+
+  const groups = getPushToTalkGroups(parsed);
+  return groups.some((group) => group.includes(event.code));
 }
 
 function isPushToTalkActive() {
-  const hasAlt = pressedKeys.has("AltLeft") || pressedKeys.has("AltRight");
-  const hasShift = pressedKeys.has("ShiftLeft") || pressedKeys.has("ShiftRight");
-  return hasAlt && hasShift && pressedKeys.has("KeyZ");
+  const parsed = parseShortcut(getShortcutValue("pushToTalk"));
+  if (!parsed) {
+    return false;
+  }
+
+  const groups = getPushToTalkGroups(parsed);
+  return groups.length > 0 && groups.every((group) => group.some((code) => pressedKeys.has(code)));
+}
+
+function shortcutKeyToCode(key) {
+  if (!key) {
+    return "";
+  }
+
+  if (/^[A-Z]$/.test(key)) {
+    return `Key${key}`;
+  }
+
+  if (/^[0-9]$/.test(key)) {
+    return `Digit${key}`;
+  }
+
+  if (key === "/") return "Slash";
+  if (key === "`") return "Backquote";
+  if (key === "Space") return "Space";
+  if (key === "Enter") return "Enter";
+  if (key === "Tab") return "Tab";
+  if (key === "Escape") return "Escape";
+  if (key === "-") return "Minus";
+  return "";
+}
+
+function getPushToTalkGroups(parsed) {
+  const groups = [];
+
+  if (parsed.modifiers.has("CommandOrControl")) {
+    groups.push(["ControlLeft", "ControlRight", "MetaLeft", "MetaRight"]);
+  }
+  if (parsed.modifiers.has("Meta")) {
+    groups.push(["MetaLeft", "MetaRight"]);
+  }
+  if (parsed.modifiers.has("Alt")) {
+    groups.push(["AltLeft", "AltRight"]);
+  }
+  if (parsed.modifiers.has("Shift")) {
+    groups.push(["ShiftLeft", "ShiftRight"]);
+  }
+
+  const keyCode = shortcutKeyToCode(parsed.key);
+  if (keyCode) {
+    groups.push([keyCode]);
+  }
+
+  return groups;
 }
 
 function findActiveSessionId() {
@@ -488,7 +542,7 @@ async function startVoiceCapture() {
     sink.connect(audioContext.destination);
     await audioContext.resume();
     renderVoiceStatus();
-    showNotice("Voice attivo: parla e rilascia Shift+Alt+Z per trascrivere.", {
+    showNotice(`Voice attivo: parla e rilascia ${formatShortcutLabel(getShortcutValue("pushToTalk"))} per trascrivere.`, {
       type: "info",
       timeoutMs: 0
     });
@@ -646,6 +700,7 @@ export async function initVoiceToText() {
   }
 
   await refreshVoiceConfig();
+  document.addEventListener("therminal:shortcuts-updated", () => renderVoiceStatus());
   bindVoiceUi();
   bindPushToTalkShortcut();
   void warmVoiceModel();

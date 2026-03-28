@@ -20,6 +20,11 @@ import { getNextTaskStatus, getTaskStatusMeta, normalizeTaskStatus } from "./tas
 import { destroyBrowserPanel } from "./browser.js";
 import { attachPaneInteractions } from "./pane-controls.js";
 import { removeClientFromLayout, renderWorkspaceLayout } from "./layout.js";
+import {
+  getFavoriteMessagePresetButtons,
+  openCliOperationsModalForSession,
+  sendMessagePresetToSession
+} from "./cli-operations.js";
 
 function isPasteShortcut(event) {
   const key = String(event.key || "").toLowerCase();
@@ -92,6 +97,27 @@ function createHeaderActionButton(className, title, content) {
   return button;
 }
 
+function renderFavoritePresetButtons(sessionId) {
+  const session = sessionStore.get(sessionId);
+  if (!session?.favoritePresetsWrap) {
+    return;
+  }
+
+  const favorites = getFavoriteMessagePresetButtons();
+  session.favoritePresetsWrap.innerHTML = "";
+  session.favoritePresetsWrap.classList.toggle("hidden", favorites.length === 0);
+
+  for (const preset of favorites) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "terminal-header-preset";
+    button.title = preset.label;
+    button.textContent = preset.label;
+    button.addEventListener("click", () => sendMessagePresetToSession(sessionId, preset.id));
+    session.favoritePresetsWrap.append(button);
+  }
+}
+
 export async function createWorkspaceSession(workspace, client, host) {
   const payload = {
     provider: client.provider,
@@ -125,6 +151,9 @@ export async function createWorkspaceSession(workspace, client, host) {
   info.className = "text-[10px] text-zinc-500 font-mono flex-1";
   info.textContent = "#1";
 
+  const favoritePresetsWrap = document.createElement("div");
+  favoritePresetsWrap.className = "terminal-header-presets hidden";
+
   const statusBtn = document.createElement("button");
   statusBtn.type = "button";
 
@@ -144,6 +173,11 @@ export async function createWorkspaceSession(workspace, client, host) {
     "Split orizzontale",
     '<span class="text-[9px] font-semibold tracking-wide">H</span>'
   );
+  const operationsBtn = createHeaderActionButton(
+    btnCls,
+    "Operazioni CLI",
+    '<i class="bi bi-lightning-charge"></i>'
+  );
   const searchBtn = createHeaderActionButton(btnCls, "Cerca", '<i class="bi bi-search"></i>');
   const exportBtn = createHeaderActionButton(btnCls, "Esporta log", '<i class="bi bi-download"></i>');
   const maxBtn = createHeaderActionButton(btnCls, "Massimizza", '<i class="bi bi-arrows-fullscreen"></i>');
@@ -154,8 +188,17 @@ export async function createWorkspaceSession(workspace, client, host) {
     '<i class="bi bi-x-lg"></i>'
   );
 
-  actions.append(splitVerticalBtn, splitHorizontalBtn, searchBtn, exportBtn, maxBtn, restartBtn, closeBtn);
-  head.append(grip, badge, info, statusBtn, actions);
+  actions.append(
+    splitVerticalBtn,
+    splitHorizontalBtn,
+    operationsBtn,
+    searchBtn,
+    exportBtn,
+    maxBtn,
+    restartBtn,
+    closeBtn
+  );
+  head.append(grip, badge, info, favoritePresetsWrap, statusBtn, actions);
 
   const body = document.createElement("div");
   body.className = "terminal-cell-body relative flex-1 min-h-0 bg-th-body";
@@ -265,6 +308,7 @@ export async function createWorkspaceSession(workspace, client, host) {
     cell,
     host,
     info,
+    favoritePresetsWrap,
     statusBtn,
     terminal,
     fitAddon,
@@ -276,6 +320,11 @@ export async function createWorkspaceSession(workspace, client, host) {
 
   sessionStore.set(session.id, sessionState);
   updateSessionTaskStatus(session.id, sessionState.taskStatus);
+  renderFavoritePresetButtons(session.id);
+
+  const messagePresetListener = () => renderFavoritePresetButtons(session.id);
+  document.addEventListener("therminal:message-presets-updated", messagePresetListener);
+  sessionState.messagePresetListener = messagePresetListener;
 
   cell.addEventListener("mousedown", () => {
     state.focusedSessionId = session.id;
@@ -289,6 +338,7 @@ export async function createWorkspaceSession(workspace, client, host) {
     splitHorizontalBtn,
   });
 
+  operationsBtn.addEventListener("click", () => openCliOperationsModalForSession(session.id));
   searchBtn.addEventListener("click", () => showSearch(session.id));
   exportBtn.addEventListener("click", () => exportLog(session.id));
   maxBtn.addEventListener("click", () => toggleMaximize(session.id));
@@ -336,6 +386,9 @@ export function destroySession(sessionId, { notifyBackend = false, removeClient 
   cancelQueuedFit(sessionId);
   session.resizeObserver.disconnect();
   session.inputDisposable.dispose();
+  if (typeof session.messagePresetListener === "function") {
+    document.removeEventListener("therminal:message-presets-updated", session.messagePresetListener);
+  }
   session.terminal.dispose();
   session.cell.remove();
   sessionStore.delete(sessionId);

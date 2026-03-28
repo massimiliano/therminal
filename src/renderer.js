@@ -4,6 +4,7 @@ import { buildCountOptions } from "./modules/wizard.js";
 import { loadPresets } from "./modules/presets.js";
 import { bindUiEvents, bindIpcEvents } from "./modules/events.js";
 import { bindKeyboardShortcuts, initShortcutsModal } from "./modules/shortcuts.js";
+import { loadAppConfig } from "./modules/app-config.js";
 import { setOnCloseWorkspace } from "./modules/tabs.js";
 import { closeWorkspace } from "./modules/workspace.js";
 import { loadSessionsUI } from "./modules/session-state.js";
@@ -13,6 +14,7 @@ import { initUsagePanel } from "./modules/usage-panel.js";
 import { refreshProviderCatalog } from "./modules/providers.js";
 import { initVoiceToText } from "./modules/voice.js";
 import { initSharedContext } from "./modules/shared-context.js";
+import { initCliOperationsModal } from "./modules/cli-operations.js";
 
 async function bootstrap() {
   if (!TerminalCtor || !FitAddonCtor || !window.launcherAPI) {
@@ -22,6 +24,7 @@ async function bootstrap() {
 
   try {
     await refreshProviderCatalog();
+    await loadAppConfig();
 
     if (typeof Notification !== "undefined" && Notification.permission === "default") {
       Notification.requestPermission();
@@ -37,6 +40,7 @@ async function bootstrap() {
     bindIpcEvents();
     bindKeyboardShortcuts();
     initShortcutsModal();
+    initCliOperationsModal();
     initMonitor();
     initServiceStatusPanel();
     initUsagePanel();

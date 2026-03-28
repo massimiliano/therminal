@@ -6,6 +6,31 @@ import { loadPresets } from "./presets.js";
 import { loadSessionsUI } from "./session-state.js";
 import { showNotice } from "./notices.js";
 import { refreshProviderCatalog } from "./providers.js";
+import {
+  DEFAULT_SHORTCUTS,
+  SHORTCUT_ACTIONS,
+  getShortcutConfig,
+  getShortcutValue,
+  saveShortcutConfig
+} from "./app-config.js";
+import {
+  buildShortcutFromEvent,
+  formatShortcutLabel,
+  getShortcutSegments,
+  shortcutMatchesEvent
+} from "./shortcut-utils.js";
+import { openCliOperationsModal, toggleCliOperationsModal } from "./cli-operations.js";
+
+let shortcutDraft = getShortcutConfig();
+let captureActionId = null;
+
+function isEditableTarget(target) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  return Boolean(target.closest("input, textarea, select, [contenteditable='true']"));
+}
 
 function getProviderStatusMeta(provider) {
   if (provider?.available === false) {
@@ -21,6 +46,127 @@ function getProviderStatusMeta(provider) {
     dot: "bg-emerald-400",
     label: provider?.kind === "shell" ? "Integrato" : "Disponibile"
   };
+}
+
+function syncShortcutDraft() {
+  shortcutDraft = getShortcutConfig();
+}
+
+function dispatchShortcutUpdate() {
+  document.dispatchEvent(
+    new CustomEvent("therminal:shortcuts-updated", {
+      detail: getShortcutConfig()
+    })
+  );
+}
+
+function updateShortcutTitles() {
+  if (dom.shortcutsToggle) {
+    dom.shortcutsToggle.title = `Scorciatoie e info (${formatShortcutLabel(getShortcutValue("toggleShortcuts"))})`;
+  }
+  if (dom.broadcastToggle) {
+    dom.broadcastToggle.title = `Broadcast a tutti i terminali (${formatShortcutLabel(getShortcutValue("toggleBroadcast"))})`;
+  }
+}
+
+function renderShortcutKbd(shortcut) {
+  const segments = getShortcutSegments(shortcut);
+  if (segments.length === 0) {
+    return '<span class="text-[11px] text-zinc-600">Non impostata</span>';
+  }
+
+  return segments
+    .map((segment) => `<kbd>${segment}</kbd>`)
+    .join('<span class="text-zinc-700">+</span>');
+}
+
+function renderShortcutEditor() {
+  if (!dom.shortcutEditorList) {
+    return;
+  }
+
+  dom.shortcutEditorList.innerHTML = "";
+
+  for (const action of SHORTCUT_ACTIONS) {
+    const isCapturing = captureActionId === action.id;
+    const row = document.createElement("article");
+    row.className = "rounded-xl border border-th-border-lt bg-th-body px-3 py-3";
+
+    const currentShortcut = shortcutDraft[action.id] || DEFAULT_SHORTCUTS[action.id];
+    row.innerHTML = `
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-zinc-200">${action.label}</p>
+          <p class="mt-1 text-[11px] text-zinc-500 leading-relaxed">${action.description}</p>
+        </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            data-shortcut-action="${action.id}"
+            data-role="record"
+            class="rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+              isCapturing
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                : "border-zinc-700/60 text-zinc-300 hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
+            }"
+          >
+            ${isCapturing ? "Premi tasti..." : "Registra"}
+          </button>
+          <button
+            type="button"
+            data-shortcut-action="${action.id}"
+            data-role="reset"
+            class="rounded-lg border border-zinc-700/60 px-2.5 py-1.5 text-[11px] font-medium text-zinc-300 transition-colors hover:border-red-500/50 hover:text-red-200 hover:bg-red-500/5"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+      <div class="mt-3 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-1 text-[11px] text-zinc-500" data-role="value">
+          ${renderShortcutKbd(currentShortcut)}
+        </div>
+        <span class="text-[10px] text-zinc-600 uppercase tracking-wide">
+          ${action.id === "toggleWindow" ? "Globale" : "Finestra"}
+        </span>
+      </div>
+    `;
+
+    row.querySelector('[data-role="record"]')?.addEventListener("click", () => {
+      captureActionId = isCapturing ? null : action.id;
+      renderShortcutEditor();
+    });
+    row.querySelector('[data-role="reset"]')?.addEventListener("click", () => {
+      shortcutDraft[action.id] = DEFAULT_SHORTCUTS[action.id];
+      if (captureActionId === action.id) {
+        captureActionId = null;
+      }
+      renderShortcutEditor();
+    });
+
+    dom.shortcutEditorList.append(row);
+  }
+}
+
+function findDuplicateShortcuts() {
+  const seen = new Map();
+  const duplicates = [];
+
+  for (const action of SHORTCUT_ACTIONS) {
+    const shortcut = shortcutDraft[action.id];
+    if (!shortcut) {
+      continue;
+    }
+
+    if (seen.has(shortcut)) {
+      duplicates.push([seen.get(shortcut), action.label, shortcut]);
+      continue;
+    }
+
+    seen.set(shortcut, action.label);
+  }
+
+  return duplicates;
 }
 
 export function renderShortcutsProviderStatus() {
@@ -93,12 +239,50 @@ export function toggleShortcutsModal() {
   dom.shortcutsModal.classList.toggle("hidden");
 
   if (willOpen) {
+    syncShortcutDraft();
     renderShortcutsProviderStatus();
+    renderShortcutEditor();
+  } else if (captureActionId) {
+    captureActionId = null;
+    renderShortcutEditor();
+  }
+}
+
+async function handleShortcutSave() {
+  try {
+    const duplicates = findDuplicateShortcuts();
+    if (duplicates.length > 0) {
+      const [firstA, firstB, shortcut] = duplicates[0];
+      showNotice(`Shortcut duplicata (${shortcut}) tra "${firstA}" e "${firstB}".`, {
+        type: "warning",
+        timeoutMs: 3500
+      });
+      return;
+    }
+
+    const result = await saveShortcutConfig(shortcutDraft);
+    syncShortcutDraft();
+    captureActionId = null;
+    renderShortcutEditor();
+    updateShortcutTitles();
+    dispatchShortcutUpdate();
+
+    if (result.warning) {
+      showNotice(result.warning, { type: "warning", timeoutMs: 4000 });
+      return;
+    }
+
+    showNotice("Shortcut salvate.", { type: "success", timeoutMs: 2200 });
+  } catch (error) {
+    console.error("Save shortcuts failed:", error);
+    showNotice("Impossibile salvare le shortcut.", { type: "error" });
   }
 }
 
 export function initShortcutsModal() {
   if (!dom.shortcutsProviderRefreshBtn) return;
+
+  updateShortcutTitles();
 
   dom.shortcutsProviderRefreshBtn.addEventListener("click", async () => {
     try {
@@ -117,31 +301,65 @@ export function initShortcutsModal() {
     }
   });
 
+  dom.shortcutsSaveBtn?.addEventListener("click", () => handleShortcutSave());
+  dom.openOperationsFromShortcutsBtn?.addEventListener("click", () => openCliOperationsModal());
+
   renderShortcutsProviderStatus();
+  renderShortcutEditor();
 }
 
 export function bindKeyboardShortcuts() {
-  document.addEventListener("keydown", (e) => {
-    // Ctrl+Shift+B: toggle broadcast
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "B") {
-      e.preventDefault();
-      toggleBroadcast();
-      return;
-    }
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (captureActionId) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          captureActionId = null;
+          renderShortcutEditor();
+          return;
+        }
 
-    // Ctrl+/: toggle shortcuts modal
-    if ((e.ctrlKey || e.metaKey) && e.key === "/") {
-      e.preventDefault();
-      toggleShortcutsModal();
-      return;
-    }
+        const shortcut = buildShortcutFromEvent(event);
+        if (!shortcut) {
+          return;
+        }
 
-    // Escape: close shortcuts modal
-    if (e.key === "Escape") {
-      if (!dom.shortcutsModal.classList.contains("hidden")) {
+        event.preventDefault();
+        event.stopPropagation();
+        shortcutDraft[captureActionId] = shortcut;
+        captureActionId = null;
+        renderShortcutEditor();
+        return;
+      }
+
+      if (shortcutMatchesEvent(event, getShortcutValue("toggleBroadcast"))) {
+        if (isEditableTarget(event.target)) {
+          return;
+        }
+        event.preventDefault();
+        toggleBroadcast();
+        return;
+      }
+
+      if (shortcutMatchesEvent(event, getShortcutValue("toggleShortcuts"))) {
+        event.preventDefault();
         toggleShortcutsModal();
         return;
       }
-    }
-  });
+
+      if (event.key === "Escape") {
+        if (dom.operationsModal && !dom.operationsModal.classList.contains("hidden")) {
+          toggleCliOperationsModal();
+          return;
+        }
+
+        if (!dom.shortcutsModal.classList.contains("hidden")) {
+          toggleShortcutsModal();
+        }
+      }
+    },
+    true
+  );
 }

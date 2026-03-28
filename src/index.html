@@ -198,6 +198,15 @@
         </button>
         <div class="w-px h-4 bg-zinc-800 mx-0.5"></div>
         <button
+          id="operationsToggle"
+          class="workspace-only hidden flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
+          title="Operazioni CLI rapide"
+        >
+          <i class="bi bi-lightning-charge"></i>
+          <span>Operazioni</span>
+        </button>
+        <div class="workspace-only hidden w-px h-4 bg-zinc-800 mx-0.5"></div>
+        <button
           id="shortcutsToggle"
           class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
           title="Scorciatoie e info (Ctrl+/)"
@@ -574,40 +583,56 @@
           <div class="h-px bg-th-border my-3"></div>
 
           <section class="mb-4">
-            <h3
-              class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-2"
-            >
-              Scorciatoie
-            </h3>
-            <div class="flex items-center justify-between py-[5px]">
-              <span class="text-sm text-zinc-400"
-                >Apri scorciatoie / info</span
-              >
-              <div class="flex items-center gap-1 text-[11px] text-zinc-500">
-                <kbd>Ctrl</kbd><span class="text-zinc-700">+</span
-                ><kbd>/</kbd>
+            <div class="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3
+                  class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest"
+                >
+                  Scorciatoie
+                </h3>
+                <p class="text-xs text-zinc-500 mt-1">
+                  Registra o reimposta le shortcut principali dell'app.
+                </p>
               </div>
-            </div>
-            <div class="flex items-center justify-between py-[5px]">
-              <span class="text-sm text-zinc-400"
-                >Broadcast a tutti i terminali</span
+              <button
+                id="shortcutsSaveBtn"
+                type="button"
+                class="shrink-0 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-200 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 hover:text-white"
               >
-              <div class="flex items-center gap-1 text-[11px] text-zinc-500">
-                <kbd>Ctrl</kbd><span class="text-zinc-700">+</span
-                ><kbd>Shift</kbd><span class="text-zinc-700">+</span
-                ><kbd>B</kbd>
-              </div>
+                Salva shortcut
+              </button>
             </div>
-            <div class="flex items-center justify-between py-[5px]">
-              <span class="text-sm text-zinc-400"
-                >Push-to-talk locale</span
+            <div id="shortcutEditorList" class="flex flex-col gap-2"></div>
+            <p class="text-[11px] text-zinc-500 leading-relaxed mt-3">
+              Usa "Registra" per catturare una combinazione con almeno un modificatore.
+            </p>
+          </section>
+
+          <div class="h-px bg-th-border my-3"></div>
+
+          <section class="mb-4">
+            <div class="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3
+                  class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest"
+                >
+                  Preset messaggi
+                </h3>
+                <p class="text-xs text-zinc-500 mt-1">
+                  Crea messaggi generici riutilizzabili per qualsiasi terminale o CLI.
+                </p>
+              </div>
+              <button
+                id="openOperationsFromShortcutsBtn"
+                type="button"
+                class="shrink-0 rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
               >
-              <div class="flex items-center gap-1 text-[11px] text-zinc-500">
-                <kbd>Shift</kbd><span class="text-zinc-700">+</span
-                ><kbd>Alt</kbd><span class="text-zinc-700">+</span
-                ><kbd>Z</kbd>
-              </div>
+                Apri operazioni
+              </button>
             </div>
+            <p class="text-xs text-zinc-500 leading-relaxed">
+              Puoi segnare fino a 5 preset come preferiti: verranno mostrati nell'header di ogni terminale.
+            </p>
           </section>
 
           <div class="h-px bg-th-border my-3"></div>
@@ -875,6 +900,111 @@
               </li>
             </ul>
           </section>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="operationsModal"
+      class="fixed inset-0 z-[110] flex items-center justify-center hidden"
+    >
+      <div
+        id="operationsBackdrop"
+        class="shortcuts-backdrop absolute inset-0 bg-black/50 backdrop-blur-sm"
+      ></div>
+      <div
+        class="relative w-[960px] max-h-[84vh] max-w-[calc(100vw-32px)] bg-th-card border border-th-border-lt rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.38)] flex flex-col overflow-hidden"
+      >
+          <div
+            class="flex items-center justify-between gap-4 px-5 py-4 border-b border-th-border shrink-0"
+          >
+            <div class="min-w-0">
+              <h2 class="text-base font-bold text-th-fg tracking-tight">
+                Preset Messaggi
+              </h2>
+            </div>
+            <button
+              id="operationsCloseBtn"
+              class="w-7 h-7 flex items-center justify-center bg-transparent text-zinc-600 cursor-pointer rounded-md text-sm transition-all duration-150 hover:text-zinc-300 hover:bg-zinc-800"
+            title="Chiudi operazioni CLI"
+          >
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="px-5 py-4 overflow-y-auto">
+          <div class="message-preset-shell">
+            <section id="operationsLibrarySection" class="message-preset-view">
+              <div class="message-preset-list-toolbar">
+                <button
+                  id="operationNewBtn"
+                  type="button"
+                  class="message-preset-toolbar-btn"
+                  title="Nuovo preset"
+                >
+                  <i class="bi bi-plus-lg"></i>
+                  <span>Nuovo</span>
+                </button>
+              </div>
+
+              <div id="operationsList" class="mt-3 flex flex-col gap-2.5"></div>
+            </section>
+
+            <section id="operationsEditorSection" class="message-preset-view hidden">
+              <div class="message-preset-editor-head">
+                <div class="message-preset-panel-head-main">
+                  <button
+                    id="operationBackBtn"
+                    type="button"
+                    class="message-preset-back-btn"
+                    title="Torna alla lista preset"
+                  >
+                    <i class="bi bi-arrow-left"></i>
+                    <span>Lista</span>
+                  </button>
+                  <div class="min-w-0">
+                    <h3 id="operationEditorTitle" class="message-preset-heading">
+                      Nuovo preset
+                    </h3>
+                  </div>
+                </div>
+              </div>
+
+              <label class="mt-3 block">
+                <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                  Nome preset
+                </span>
+                <input
+                  id="operationNameInput"
+                  type="text"
+                  placeholder="Es: Review finale"
+                  class="w-full bg-th-body border border-th-border-lt rounded-xl px-3 py-2.5 text-sm text-th-fg outline-none focus:border-emerald-400/35"
+                />
+              </label>
+
+              <label class="mt-4 block flex-1 min-h-[320px]">
+                <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                  Contenuto
+                </span>
+                <textarea
+                  id="operationContentInput"
+                  rows="12"
+                  placeholder="Scrivi qui il messaggio da inserire nel terminale selezionato..."
+                  class="w-full min-h-[320px] resize-y bg-th-body border border-th-border-lt rounded-[18px] px-3 py-3 text-sm font-mono leading-6 text-th-fg outline-none focus:border-emerald-400/35"
+                ></textarea>
+              </label>
+
+              <div class="message-preset-editor-footer mt-4">
+                <button
+                  id="operationSaveBtn"
+                  type="button"
+                  class="message-preset-primary-btn"
+                >
+                  <i class="bi bi-floppy"></i>
+                  <span>Salva</span>
+                </button>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
     </div>

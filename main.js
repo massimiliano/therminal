@@ -62,6 +62,13 @@ const STATUS_PAGE_RENDER_TIMEOUT_MS = 12000;
 const STATUS_PAGE_RENDER_SETTLE_MS = 2500;
 const DEFAULT_VOICE_PROVIDER = "local";
 const DEFAULT_GROQ_MODEL = "whisper-large-v3-turbo";
+const DEFAULT_SHORTCUTS = Object.freeze({
+  toggleWindow: "CommandOrControl+`",
+  toggleShortcuts: "CommandOrControl+/",
+  toggleBroadcast: "CommandOrControl+Shift+B",
+  pushToTalk: "Shift+Alt+Z"
+});
+const MAX_FAVORITE_MESSAGE_PRESETS = 5;
 const GROQ_STT_MODELS = new Set(["whisper-large-v3", "whisper-large-v3-turbo"]);
 const GROQ_TRANSCRIPTION_API_URL = "https://api.groq.com/openai/v1/audio/transcriptions";
 const GROQ_REQUEST_TIMEOUT_MS = 120000;
@@ -81,6 +88,7 @@ const WHISPER_SERVER_POLL_INTERVAL_MS = 250;
 const WHISPER_SERVER_MAX_TRANSCRIBE_ATTEMPTS = 4;
 const WHISPER_SERVER_LOG_TAIL_LIMIT = 4000;
 let whisperServerRuntime = createWhisperServerRuntime();
+let registeredWindowShortcut = null;
 
 app.on("second-instance", () => {
   if (!app.isReady()) {
@@ -247,6 +255,168 @@ function getSessionPath() {
 
 function getVoiceConfigPath() {
   return path.join(app.getPath("userData"), "voice-config.json");
+}
+
+function getAppConfigPath() {
+  return path.join(app.getPath("userData"), "app-config.json");
+}
+
+function normalizeShortcutConfig(payload = {}) {
+  const next = {};
+  for (const [key, fallback] of Object.entries(DEFAULT_SHORTCUTS)) {
+    next[key] =
+      typeof payload?.[key] === "string" && payload[key].trim().length > 0
+        ? payload[key].trim()
+        : fallback;
+  }
+  return next;
+}
+
+function normalizeMessagePreset(preset = {}, index = 0) {
+  const label =
+    typeof preset.label === "string" && preset.label.trim().length > 0
+      ? preset.label.trim()
+      : `Messaggio ${index + 1}`;
+  const content = typeof preset.content === "string" ? preset.content.replace(/\r\n/g, "\n") : "";
+
+  return {
+    id:
+      typeof preset.id === "string" && preset.id.trim().length > 0
+        ? preset.id.trim()
+        : crypto.randomUUID(),
+    label,
+    content,
+    autoSubmit: false,
+    isFavorite: Boolean(preset.isFavorite)
+  };
+}
+
+function flattenLegacyProviderOperations(payload = {}) {
+  const providers = ["codex", "claude", "gemini", "terminal"];
+  const flattened = [];
+
+  for (const provider of providers) {
+    const entries = Array.isArray(payload?.[provider]) ? payload[provider] : [];
+    for (const entry of entries) {
+      flattened.push({
+        ...entry,
+        label:
+          typeof entry?.label === "string" && entry.label.trim().length > 0
+            ? entry.label.trim()
+            : `${provider} preset`
+      });
+    }
+  }
+
+  return flattened;
+}
+
+function normalizeMessagePresets(payload = []) {
+  const favorites = [];
+  const next = [];
+  const entries = Array.isArray(payload) ? payload : [];
+
+  for (const [index, preset] of entries.entries()) {
+    const normalized = normalizeMessagePreset(preset, index);
+    if (!normalized.content.trim()) {
+      continue;
+    }
+
+    if (normalized.isFavorite) {
+      if (favorites.length >= MAX_FAVORITE_MESSAGE_PRESETS) {
+        normalized.isFavorite = false;
+      } else {
+        favorites.push(normalized.id);
+      }
+    }
+
+    next.push(normalized);
+  }
+
+  return next;
+}
+
+function normalizeAppConfig(payload = {}) {
+  const rawPresets = Array.isArray(payload.messagePresets)
+    ? payload.messagePresets
+    : flattenLegacyProviderOperations(payload.providerOperations);
+
+  return {
+    shortcuts: normalizeShortcutConfig(payload.shortcuts),
+    messagePresets: normalizeMessagePresets(rawPresets)
+  };
+}
+
+function loadAppConfigFile() {
+  try {
+    const configPath = getAppConfigPath();
+    if (fs.existsSync(configPath)) {
+      return normalizeAppConfig(JSON.parse(fs.readFileSync(configPath, "utf8")));
+    }
+  } catch {}
+
+  return normalizeAppConfig();
+}
+
+function saveAppConfigFile(payload) {
+  const normalized = normalizeAppConfig(payload);
+  fs.writeFileSync(getAppConfigPath(), JSON.stringify(normalized, null, 2), "utf8");
+  return normalized;
+}
+
+function toggleMainWindowVisibility() {
+  if (!mainWindow) {
+    createMainWindow();
+    return;
+  }
+
+  if (mainWindow.isVisible() && mainWindow.isFocused()) {
+    mainWindow.hide();
+    return;
+  }
+
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function registerWindowShortcut(accelerator) {
+  const normalized =
+    typeof accelerator === "string" && accelerator.trim().length > 0
+      ? accelerator.trim()
+      : DEFAULT_SHORTCUTS.toggleWindow;
+
+  if (registeredWindowShortcut) {
+    globalShortcut.unregister(registeredWindowShortcut);
+    registeredWindowShortcut = null;
+  }
+
+  try {
+    if (globalShortcut.register(normalized, () => toggleMainWindowVisibility())) {
+      registeredWindowShortcut = normalized;
+      return {
+        shortcut: normalized,
+        warning: ""
+      };
+    }
+  } catch {}
+
+  if (normalized !== DEFAULT_SHORTCUTS.toggleWindow) {
+    const fallbackRegistered = globalShortcut.register(DEFAULT_SHORTCUTS.toggleWindow, () =>
+      toggleMainWindowVisibility()
+    );
+    if (fallbackRegistered) {
+      registeredWindowShortcut = DEFAULT_SHORTCUTS.toggleWindow;
+    }
+    return {
+      shortcut: DEFAULT_SHORTCUTS.toggleWindow,
+      warning: `Shortcut globale non valida: "${normalized}". Ripristinata su ${DEFAULT_SHORTCUTS.toggleWindow}.`
+    };
+  }
+
+  return {
+    shortcut: DEFAULT_SHORTCUTS.toggleWindow,
+    warning: `Impossibile registrare la shortcut globale ${DEFAULT_SHORTCUTS.toggleWindow}.`
+  };
 }
 
 function normalizeVoiceConfig(payload = {}) {
@@ -2643,20 +2813,12 @@ function createMainWindow() {
 if (hasSingleInstanceLock) {
   app.whenReady().then(() => {
     createMainWindow();
-
-    // Quake-style global toggle: Ctrl+`
-    globalShortcut.register("CommandOrControl+`", () => {
-      if (!mainWindow) {
-        createMainWindow();
-        return;
-      }
-      if (mainWindow.isVisible() && mainWindow.isFocused()) {
-        mainWindow.hide();
-      } else {
-        mainWindow.show();
-        mainWindow.focus();
-      }
-    });
+    const config = loadAppConfigFile();
+    const registration = registerWindowShortcut(config.shortcuts.toggleWindow);
+    if (registration.shortcut !== config.shortcuts.toggleWindow) {
+      config.shortcuts.toggleWindow = registration.shortcut;
+      saveAppConfigFile(config);
+    }
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) {
@@ -2846,6 +3008,36 @@ ipcMain.handle("presets:delete", (_event, name) => {
   delete presets[name];
   savePresetsFile(presets);
   return true;
+});
+
+ipcMain.handle("app-config:get", () => loadAppConfigFile());
+
+ipcMain.handle("app-config:save-shortcuts", (_event, payload = {}) => {
+  const config = loadAppConfigFile();
+  config.shortcuts = normalizeShortcutConfig({
+    ...config.shortcuts,
+    ...payload
+  });
+
+  const registration = app.isReady()
+    ? registerWindowShortcut(config.shortcuts.toggleWindow)
+    : { shortcut: config.shortcuts.toggleWindow, warning: "" };
+  config.shortcuts.toggleWindow = registration.shortcut;
+
+  const saved = saveAppConfigFile(config);
+  return {
+    shortcuts: saved.shortcuts,
+    warning: registration.warning || ""
+  };
+});
+
+ipcMain.handle("app-config:save-message-presets", (_event, payload = []) => {
+  const config = loadAppConfigFile();
+  config.messagePresets = normalizeMessagePresets(payload);
+  const saved = saveAppConfigFile(config);
+  return {
+    messagePresets: saved.messagePresets
+  };
 });
 
 // ─── Shell & Dialog ───────────────────────────────────────
