@@ -32,6 +32,7 @@ const PROVIDER_ACTION_STYLE = {
   codex: "text-sky-300 border-sky-500/30 bg-sky-500/12 hover:bg-sky-500/20 hover:border-sky-400/50",
   gemini: "text-violet-300 border-violet-500/30 bg-violet-500/12 hover:bg-violet-500/20 hover:border-violet-400/50",
   terminal: "text-emerald-300 border-emerald-500/30 bg-emerald-500/12 hover:bg-emerald-500/20 hover:border-emerald-400/50",
+  lazygit: "text-lime-300 border-lime-500/30 bg-lime-500/12 hover:bg-lime-500/20 hover:border-lime-400/50",
 };
 
 const PROVIDER_META = {
@@ -62,6 +63,13 @@ const PROVIDER_META = {
     kindLabel: "Shell",
     bulkPlaceholder: "Comando per tutti i terminali",
     inlinePlaceholder: "es: npm run dev",
+  },
+  lazygit: {
+    icon: "bi-git",
+    description: "Interfaccia Git interattiva nel terminale, utile per status, commit, branch e staging rapido.",
+    kindLabel: "Git TUI",
+    bulkPlaceholder: "Argomenti per tutti i LazyGit",
+    inlinePlaceholder: "es: --path .",
   },
   browser: {
     icon: "bi-globe2",

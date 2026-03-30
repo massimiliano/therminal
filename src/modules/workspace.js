@@ -12,7 +12,7 @@ import { switchView, renderTabs } from "./tabs.js";
 import { showStep } from "./wizard.js";
 import { buildClientCommand, extractInlineArgs, normalizeInlineArgs } from "./cli-options.js";
 import { showNotice } from "./notices.js";
-import { validateProviderSelection } from "./providers.js";
+import { getProviderLabel, validateProviderSelection } from "./providers.js";
 import { normalizeSharedContext, normalizeStructuredContext } from "./shared-context.js";
 import { normalizeTaskStatus } from "./task-status.js";
 import { createBrowserPanel, createBrowserCommand, destroyBrowserPanel } from "./browser.js";
@@ -271,7 +271,7 @@ export async function addTerminalToActiveWorkspace(provider, options = {}) {
     await mountWorkspaceClient(workspace, client);
     renderWorkspaceLayout(workspace);
     showNotice(
-      `Aggiunto ${provider === "terminal" ? "Terminale" : provider === "browser" ? "Browser" : provider.charAt(0).toUpperCase() + provider.slice(1)} nel workspace attivo.`,
+      `Aggiunto ${provider === "browser" ? "Browser" : getProviderLabel(provider)} nel workspace attivo.`,
       { type: "success", timeoutMs: 2500 }
     );
     return client;

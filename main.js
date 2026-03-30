@@ -24,8 +24,10 @@ function configureSessionDataPath() {
 
 configureSessionDataPath();
 
-const hasSingleInstanceLock = app.requestSingleInstanceLock();
-if (!hasSingleInstanceLock) {
+const shouldEnforceSingleInstance = process.env.THERMINAL_SINGLE_INSTANCE === "1";
+const hasSingleInstanceLock = !shouldEnforceSingleInstance || app.requestSingleInstanceLock();
+
+if (shouldEnforceSingleInstance && !hasSingleInstanceLock) {
   app.quit();
 }
 
@@ -45,6 +47,10 @@ const PROVIDERS = Object.freeze({
   terminal: {
     label: "Terminale",
     defaultCommand: ""
+  },
+  lazygit: {
+    label: "LazyGit",
+    defaultCommand: "lazygit"
   }
 });
 
@@ -90,26 +96,29 @@ const WHISPER_SERVER_LOG_TAIL_LIMIT = 4000;
 let whisperServerRuntime = createWhisperServerRuntime();
 let registeredWindowShortcut = null;
 
-app.on("second-instance", () => {
-  if (!app.isReady()) {
-    return;
-  }
+if (shouldEnforceSingleInstance) {
+  app.on("second-instance", () => {
+    if (!app.isReady()) {
+      return;
+    }
 
-  if (!mainWindow || mainWindow.isDestroyed()) {
-    createMainWindow();
-    return;
-  }
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      createMainWindow();
+      return;
+    }
 
-  if (mainWindow.isMinimized()) {
-    mainWindow.restore();
-  }
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
 
-  if (!mainWindow.isVisible()) {
-    mainWindow.show();
-  }
+    if (!mainWindow.isVisible()) {
+      mainWindow.show();
+    }
 
-  mainWindow.focus();
-});
+    mainWindow.focus();
+  });
+}
+
 
 // ─── CPU Metrics ────────────────────────────────────────
 let prevCpuInfo = null;
@@ -292,7 +301,7 @@ function normalizeMessagePreset(preset = {}, index = 0) {
 }
 
 function flattenLegacyProviderOperations(payload = {}) {
-  const providers = ["codex", "claude", "gemini", "terminal"];
+  const providers = ["codex", "claude", "gemini", "terminal", "lazygit"];
   const flattened = [];
 
   for (const provider of providers) {
@@ -2810,23 +2819,21 @@ function createMainWindow() {
   return mainWindow;
 }
 
-if (hasSingleInstanceLock) {
-  app.whenReady().then(() => {
-    createMainWindow();
-    const config = loadAppConfigFile();
-    const registration = registerWindowShortcut(config.shortcuts.toggleWindow);
-    if (registration.shortcut !== config.shortcuts.toggleWindow) {
-      config.shortcuts.toggleWindow = registration.shortcut;
-      saveAppConfigFile(config);
-    }
+app.whenReady().then(() => {
+  createMainWindow();
+  const config = loadAppConfigFile();
+  const registration = registerWindowShortcut(config.shortcuts.toggleWindow);
+  if (registration.shortcut !== config.shortcuts.toggleWindow) {
+    config.shortcuts.toggleWindow = registration.shortcut;
+    saveAppConfigFile(config);
+  }
 
-    app.on("activate", () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
-        createMainWindow();
-      }
-    });
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createMainWindow();
+    }
   });
-}
+});
 
 app.on("before-quit", () => {
   stopWhisperServerRuntime();

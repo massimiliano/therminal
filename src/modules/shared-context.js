@@ -6,6 +6,7 @@ import { getTaskStatusMeta, normalizeTaskStatus } from "./task-status.js";
 const CAPTURE_TAIL_LINES = 80;
 const CONTEXT_BUTTON_IDLE = "text-zinc-500";
 const CONTEXT_BUTTON_ACTIVE = "text-emerald-400 bg-emerald-400/5";
+const NON_AI_PROVIDERS = new Set(["terminal", "lazygit", "browser"]);
 const WORKFLOW_TEMPLATES = {
   general: {
     label: "General handoff",
@@ -243,7 +244,7 @@ function getWorkspaceAiSessions() {
 
   return workspace.clients
     .map((client) => sessionStore.get(client.sessionId))
-    .filter((session) => session && session.provider !== "terminal" && session.provider !== "browser");
+    .filter((session) => session && !NON_AI_PROVIDERS.has(session.provider));
 }
 
 function getPreferredTargetSession() {
@@ -251,8 +252,7 @@ function getPreferredTargetSession() {
   if (
     focused &&
     focused.workspaceId === state.activeView &&
-    focused.provider !== "terminal" &&
-    focused.provider !== "browser"
+    !NON_AI_PROVIDERS.has(focused.provider)
   ) {
     return focused;
   }
@@ -470,7 +470,7 @@ function sendContextToSessions(sessions) {
     return;
   }
 
-  const targetSessions = sessions.filter((session) => session && session.provider !== "terminal");
+  const targetSessions = sessions.filter((session) => session && !NON_AI_PROVIDERS.has(session.provider));
   if (targetSessions.length === 0) {
     showNotice("Nessuna sessione AI disponibile per l'invio del contesto.", { type: "warning" });
     return;

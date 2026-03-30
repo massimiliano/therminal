@@ -134,3 +134,16 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Local agent/tooling data
+.claude/
+.codex/
+
+# Local instructions/docs not needed for app build
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+
+# Local artifacts
+screenshot/
+build.log

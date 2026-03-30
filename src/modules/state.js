@@ -58,6 +58,13 @@ export const PROVIDER_STYLE = {
     card: "border-emerald-500/20 shadow-[0_0_12px_rgba(52,211,153,0.03)]",
     dot: "bg-emerald-500/25 text-emerald-400",
   },
+  lazygit: {
+    badge: "bg-lime-500/15 text-lime-300",
+    toggle: "bg-lime-500/10 border-lime-500/30 text-lime-300",
+    quick: "text-lime-300 hover:border-lime-500/35 hover:bg-lime-500/5",
+    card: "border-lime-500/20 shadow-[0_0_12px_rgba(132,204,22,0.03)]",
+    dot: "bg-lime-500/25 text-lime-300",
+  },
   browser: {
     badge: "bg-cyan-500/15 text-cyan-300",
     dot: "bg-cyan-500/25 text-cyan-300",
