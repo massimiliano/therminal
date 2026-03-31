@@ -53,7 +53,7 @@ function normalizeMessagePreset(preset = {}, index = 0) {
 }
 
 function flattenLegacyProviderOperations(payload = {}) {
-  const providers = ["codex", "claude", "gemini", "terminal", "lazygit"];
+  const providers = ["codex", "claude", "copilot", "gemini", "terminal", "lazygit"];
   const flattened = [];
 
   for (const provider of providers) {

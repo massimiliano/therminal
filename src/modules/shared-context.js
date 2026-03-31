@@ -55,18 +55,11 @@ function ensureWorkspaceContextModel(workspace) {
 
   workspace.sharedContext = normalizeSharedContext(workspace.sharedContext);
   workspace.handoff = normalizeStructuredContext(workspace.handoff || workspace.meta?.handoff || {});
-  workspace.gitStatus = workspace.gitStatus || null;
-  workspace.gitStatusPending = Boolean(workspace.gitStatusPending);
   return workspace;
 }
 
 function getActiveWorkspace() {
   return ensureWorkspaceContextModel(workspaces.get(state.activeView) || null);
-}
-
-function getWorkspaceCwd(workspace) {
-  const candidate = workspace?.clients?.find((client) => typeof client.cwd === "string" && client.cwd.trim());
-  return candidate?.cwd || ".";
 }
 
 function isAnyContextPresent(workspace) {
@@ -112,78 +105,6 @@ function syncContextButton(workspace) {
     : "Contesto condiviso del workspace";
 }
 
-function renderGitToolbar(gitStatus) {
-  if (!dom.gitToolbarBadge || !dom.gitToolbarText || !dom.gitToolbarDot) {
-    return;
-  }
-
-  dom.gitToolbarBadge.classList.remove("text-zinc-500", "text-emerald-300", "text-amber-300", "text-red-300");
-  dom.gitToolbarDot.className = "inline-block w-1.5 h-1.5 rounded-full";
-
-  if (!gitStatus?.ok) {
-    dom.gitToolbarBadge.classList.add("text-zinc-500");
-    dom.gitToolbarText.textContent = "Git n/d";
-    dom.gitToolbarDot.classList.add("bg-zinc-500");
-    return;
-  }
-
-  if (gitStatus.dirty) {
-    dom.gitToolbarBadge.classList.add("text-amber-300");
-    dom.gitToolbarText.textContent = `${gitStatus.branch} +${gitStatus.changedCount}`;
-    dom.gitToolbarDot.classList.add("bg-amber-400");
-    return;
-  }
-
-  dom.gitToolbarBadge.classList.add("text-emerald-300");
-  dom.gitToolbarText.textContent = gitStatus.branch;
-  dom.gitToolbarDot.classList.add("bg-emerald-400");
-}
-
-function renderGitSnapshot(gitStatus) {
-  renderGitToolbar(gitStatus);
-
-  if (!dom.sharedContextGitMeta || !dom.sharedContextGitFiles) {
-    return;
-  }
-
-  if (!gitStatus?.ok) {
-    dom.sharedContextGitMeta.textContent = gitStatus?.message || "Nessun repository Git rilevato.";
-    dom.sharedContextGitFiles.innerHTML = "";
-    if (dom.sharedContextAppendGitBtn) {
-      dom.sharedContextAppendGitBtn.disabled = true;
-    }
-    return;
-  }
-
-  const parts = [
-    `Branch ${gitStatus.branch}`,
-    gitStatus.dirty ? `${gitStatus.changedCount} file modificati` : "working tree pulito",
-    gitStatus.ahead ? `ahead ${gitStatus.ahead}` : null,
-    gitStatus.behind ? `behind ${gitStatus.behind}` : null,
-    gitStatus.repoRoot
-  ].filter(Boolean);
-
-  dom.sharedContextGitMeta.textContent = parts.join(" / ");
-  dom.sharedContextGitFiles.innerHTML = "";
-
-  for (const file of gitStatus.files || []) {
-    const chip = document.createElement("span");
-    chip.className =
-      "inline-flex items-center gap-1 rounded-full border border-zinc-700/70 bg-th-body px-2 py-1 text-[10px] font-mono text-zinc-300";
-    const status = document.createElement("span");
-    status.className = file.untracked ? "text-amber-300" : file.staged ? "text-emerald-300" : "text-blue-300";
-    status.textContent = `${file.indexStatus}${file.worktreeStatus}`;
-    const pathEl = document.createElement("span");
-    pathEl.textContent = file.path;
-    chip.append(status, pathEl);
-    dom.sharedContextGitFiles.append(chip);
-  }
-
-  if (dom.sharedContextAppendGitBtn) {
-    dom.sharedContextAppendGitBtn.disabled = false;
-  }
-}
-
 function loadFormFromWorkspace(workspace) {
   ensureWorkspaceContextModel(workspace);
 
@@ -208,8 +129,6 @@ function loadFormFromWorkspace(workspace) {
   if (dom.sharedContextInput) {
     dom.sharedContextInput.value = workspace?.sharedContext || "";
   }
-
-  renderGitSnapshot(workspace?.gitStatus);
 }
 
 function getSessionTail(session, maxLines = CAPTURE_TAIL_LINES) {
@@ -289,37 +208,6 @@ function buildTaskBoardSummary(workspace) {
     .join("\n");
 }
 
-function buildGitSnapshotText(gitStatus) {
-  if (!gitStatus?.ok) {
-    return "";
-  }
-
-  const lines = [
-    "Git snapshot:",
-    `- Branch: ${gitStatus.branch}`,
-    `- Repo: ${gitStatus.repoRoot}`,
-    `- Changed files: ${gitStatus.changedCount}`,
-    `- Staged files: ${gitStatus.stagedCount}`,
-    `- Untracked files: ${gitStatus.untrackedCount}`
-  ];
-
-  if (gitStatus.ahead) {
-    lines.push(`- Ahead: ${gitStatus.ahead}`);
-  }
-  if (gitStatus.behind) {
-    lines.push(`- Behind: ${gitStatus.behind}`);
-  }
-
-  if (Array.isArray(gitStatus.files) && gitStatus.files.length > 0) {
-    lines.push("- Files:");
-    for (const file of gitStatus.files) {
-      lines.push(`  - ${file.indexStatus}${file.worktreeStatus} ${file.path}`);
-    }
-  }
-
-  return lines.join("\n");
-}
-
 function formatCaptureBlock(label, content) {
   const timestamp = new Date().toLocaleString("it-IT", {
     day: "2-digit",
@@ -392,41 +280,9 @@ function appendWorkspaceSharedContext(block) {
   setWorkspaceSharedContext(workspace, nextValue);
 }
 
-async function refreshWorkspaceGitStatus({ notifyErrors = false } = {}) {
-  const workspace = getActiveWorkspace();
-  if (!workspace || !window.launcherAPI?.getGitStatus) {
-    return null;
-  }
-  if (workspace.gitStatusPending) {
-    return workspace.gitStatus;
-  }
-
-  try {
-    workspace.gitStatusPending = true;
-    const gitStatus = await window.launcherAPI.getGitStatus({ cwd: getWorkspaceCwd(workspace) });
-    workspace.gitStatus = gitStatus;
-    renderGitSnapshot(gitStatus);
-    return gitStatus;
-  } catch (error) {
-    const fallback = {
-      ok: false,
-      message: "Impossibile leggere lo stato Git del workspace."
-    };
-    workspace.gitStatus = fallback;
-    renderGitSnapshot(fallback);
-    if (notifyErrors) {
-      showNotice(error?.message || fallback.message, { type: "warning", timeoutMs: 2600 });
-    }
-    return fallback;
-  } finally {
-    workspace.gitStatusPending = false;
-  }
-}
-
 function buildStructuredPrompt(workspace) {
   const handoff = normalizeStructuredContext(workspace?.handoff);
   const taskBoard = buildTaskBoardSummary(workspace);
-  const gitSnapshot = buildGitSnapshotText(workspace?.gitStatus);
   const notes = normalizeSharedContext(workspace?.sharedContext);
   const templateLabel = WORKFLOW_TEMPLATES[handoff.template]?.label || WORKFLOW_TEMPLATES.general.label;
   const sections = [
@@ -451,9 +307,6 @@ function buildStructuredPrompt(workspace) {
   }
   if (taskBoard) {
     sections.push("", "Task board:", taskBoard);
-  }
-  if (gitSnapshot) {
-    sections.push("", gitSnapshot);
   }
   if (notes) {
     sections.push("", "Workspace notes:", notes);
@@ -544,17 +397,6 @@ function handleGenerateSummary() {
   showNotice("Summary aggiornato dalla sessione attiva.", { type: "success", timeoutMs: 2200 });
 }
 
-function handleAppendGitSnapshot() {
-  const workspace = getActiveWorkspace();
-  if (!workspace?.gitStatus?.ok) {
-    showNotice("Nessuno snapshot Git disponibile da aggiungere.", { type: "warning" });
-    return;
-  }
-
-  appendWorkspaceSharedContext(buildGitSnapshotText(workspace.gitStatus));
-  showNotice("Snapshot Git aggiunto alle note del workspace.", { type: "success", timeoutMs: 2200 });
-}
-
 function applyTemplateDefaults(templateKey) {
   const workspace = getActiveWorkspace();
   if (!workspace) {
@@ -600,8 +442,7 @@ function updateModalState() {
     dom.sharedContextCaptureSelectionBtn,
     dom.sharedContextCaptureTailBtn,
     dom.sharedContextGenerateSummaryBtn,
-    dom.sharedContextClearBtn,
-    dom.sharedContextRefreshGitBtn
+    dom.sharedContextClearBtn
   ];
 
   for (const control of controls) {
@@ -610,9 +451,6 @@ function updateModalState() {
     }
   }
 
-  if (dom.sharedContextAppendGitBtn) {
-    dom.sharedContextAppendGitBtn.disabled = !hasWorkspace || !workspace?.gitStatus?.ok;
-  }
   if (dom.sharedContextSendActiveBtn) {
     dom.sharedContextSendActiveBtn.disabled = !hasContext || !activeAiSession;
   }
@@ -632,7 +470,6 @@ export function openSharedContextModal() {
   loadFormFromWorkspace(workspace);
   dom.sharedContextModal?.classList.remove("hidden");
   syncSharedContextUi();
-  refreshWorkspaceGitStatus();
   dom.sharedContextGoalInput?.focus();
 }
 
@@ -644,11 +481,6 @@ export function closeSharedContextModal() {
 export function syncSharedContextUi() {
   const workspace = getActiveWorkspace();
   syncContextButton(workspace);
-  renderGitToolbar(workspace?.gitStatus);
-
-  if (workspace && !workspace.gitStatus && !workspace.gitStatusPending && window.launcherAPI?.getGitStatus) {
-    refreshWorkspaceGitStatus();
-  }
 
   if (!dom.sharedContextModal || dom.sharedContextModal.classList.contains("hidden")) {
     return;
@@ -675,7 +507,6 @@ export function initSharedContext() {
   dom.sharedContextToggle.addEventListener("click", () => openSharedContextModal());
   dom.sharedContextCloseBtn?.addEventListener("click", () => closeSharedContextModal());
   dom.sharedContextBackdrop?.addEventListener("click", () => closeSharedContextModal());
-  dom.gitToolbarBadge?.addEventListener("click", () => openSharedContextModal());
 
   dom.sharedContextTemplateSelect?.addEventListener("change", () => {
     const template = dom.sharedContextTemplateSelect.value;
@@ -713,10 +544,6 @@ export function initSharedContext() {
   dom.sharedContextCaptureSelectionBtn?.addEventListener("click", () => handleCaptureSelection());
   dom.sharedContextCaptureTailBtn?.addEventListener("click", () => handleCaptureTail());
   dom.sharedContextGenerateSummaryBtn?.addEventListener("click", () => handleGenerateSummary());
-  dom.sharedContextRefreshGitBtn?.addEventListener("click", () => {
-    refreshWorkspaceGitStatus({ notifyErrors: true });
-  });
-  dom.sharedContextAppendGitBtn?.addEventListener("click", () => handleAppendGitSnapshot());
   dom.sharedContextClearBtn?.addEventListener("click", () => {
     const workspace = getActiveWorkspace();
     if (!workspace) {

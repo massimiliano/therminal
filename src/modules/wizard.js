@@ -7,10 +7,11 @@ import {
 } from "./cli-options.js";
 import { showNotice } from "./notices.js";
 import { getFirstAvailableProvider, refreshProviderCatalog } from "./providers.js";
+import { showHomePage } from "./home-pages.js";
 
 export function showStep(step) {
   state.wizardStep = step;
-  dom.homeOverview.classList.toggle("hidden", step !== 1);
+  showHomePage("home", { scroll: false });
   dom.step1El.classList.toggle("hidden", step !== 1);
   dom.step2El.classList.toggle("hidden", step !== 2);
   if (step !== 2) {
@@ -30,9 +31,9 @@ const DOT_GRIDS = {
 const PROVIDER_ACTION_STYLE = {
   claude: "text-amber-300 border-amber-500/30 bg-amber-500/12 hover:bg-amber-500/20 hover:border-amber-400/50",
   codex: "text-sky-300 border-sky-500/30 bg-sky-500/12 hover:bg-sky-500/20 hover:border-sky-400/50",
+  copilot: "text-sky-200 border-sky-400/30 bg-sky-400/12 hover:bg-sky-400/20 hover:border-sky-300/50",
   gemini: "text-violet-300 border-violet-500/30 bg-violet-500/12 hover:bg-violet-500/20 hover:border-violet-400/50",
   terminal: "text-emerald-300 border-emerald-500/30 bg-emerald-500/12 hover:bg-emerald-500/20 hover:border-emerald-400/50",
-  lazygit: "text-lime-300 border-lime-500/30 bg-lime-500/12 hover:bg-lime-500/20 hover:border-lime-400/50",
 };
 
 const PROVIDER_META = {
@@ -50,6 +51,13 @@ const PROVIDER_META = {
     bulkPlaceholder: "Argomenti per tutti i Codex",
     inlinePlaceholder: "es: --model gpt-5.4 --approval-policy on-request",
   },
+  copilot: {
+    icon: "bi-github",
+    description: "Copilot CLI per assistenza guidata e task di coding in shell.",
+    kindLabel: "AI CLI",
+    bulkPlaceholder: "Argomenti per tutti i Copilot CLI",
+    inlinePlaceholder: "es: --help",
+  },
   gemini: {
     icon: "bi-magic",
     description: "CLI Gemini per task generali, revisione e supporto al coding.",
@@ -64,13 +72,6 @@ const PROVIDER_META = {
     bulkPlaceholder: "Comando per tutti i terminali",
     inlinePlaceholder: "es: npm run dev",
   },
-  lazygit: {
-    icon: "bi-git",
-    description: "Interfaccia Git interattiva nel terminale, utile per status, commit, branch e staging rapido.",
-    kindLabel: "Git TUI",
-    bulkPlaceholder: "Argomenti per tutti i LazyGit",
-    inlinePlaceholder: "es: --path .",
-  },
   browser: {
     icon: "bi-globe2",
     description: "Sessione browser con URL iniziale personalizzabile.",
@@ -81,6 +82,23 @@ const PROVIDER_META = {
 };
 
 let activeWizardEditorIndex = null;
+const LAUNCHER_PROVIDER_KEYS = ["claude", "codex", "copilot", "gemini", "terminal"];
+
+function getLauncherProviderEntries() {
+  return Object.entries(providerCatalog).filter(([providerKey]) =>
+    LAUNCHER_PROVIDER_KEYS.includes(providerKey)
+  );
+}
+
+function getFirstLauncherProvider() {
+  const providerEntries = getLauncherProviderEntries();
+  for (const [providerKey, provider] of providerEntries) {
+    if (provider?.available !== false) {
+      return providerKey;
+    }
+  }
+  return providerEntries[0]?.[0] || getFirstAvailableProvider();
+}
 
 function getProviderActionClass(providerKey) {
   return (
@@ -158,7 +176,7 @@ export function buildCountOptions() {
         }
 
         state.wizardClientCount = count;
-        const defaultProvider = getFirstAvailableProvider();
+        const defaultProvider = getFirstLauncherProvider();
         state.wizardProviders = new Array(count).fill(defaultProvider);
         state.wizardInlineArgs = new Array(count).fill("");
         state.wizardBulkInlineArgs = {};
@@ -558,7 +576,7 @@ function renderBulkFlagsPanel(providerEntries) {
 
 export function buildStep2() {
   state.wizardInlineArgs = normalizeInlineArgs(state.wizardInlineArgs, state.wizardClientCount);
-  const providerEntries = Object.entries(providerCatalog);
+  const providerEntries = getLauncherProviderEntries();
   normalizeBulkInlineArgs(providerEntries);
 
   renderQuickSelect(providerEntries);
@@ -600,7 +618,7 @@ function buildSelectionOption(providerEntries, selectedKey, clientIndex, provide
 
 export function renderClientGrid() {
   state.wizardInlineArgs = normalizeInlineArgs(state.wizardInlineArgs, state.wizardClientCount);
-  const providerEntries = Object.entries(providerCatalog);
+  const providerEntries = getLauncherProviderEntries();
   dom.clientGrid.innerHTML = "";
   dom.clientGrid.style.gridTemplateColumns = "1fr";
   dom.clientGrid.dataset.density = state.wizardClientCount >= 16 ? "dense" : "compact";
@@ -623,13 +641,15 @@ export function renderClientGrid() {
   header.className = "wizard-client-row wizard-client-row-head";
   header.innerHTML = `
     <div class="wizard-client-col wizard-client-col-id">#</div>
-    <div class="wizard-client-col wizard-client-col-provider">Provider</div>
+    <div class="wizard-client-col wizard-client-col-provider">CLI / Terminale</div>
     <div class="wizard-client-col wizard-client-col-config">Configurazione</div>
   `;
   dom.clientGrid.append(header);
 
   for (let i = 0; i < state.wizardClientCount; i++) {
-    const selectedKey = state.wizardProviders[i];
+    const selectedKey = providerEntries.some(([providerKey]) => providerKey === state.wizardProviders[i])
+      ? state.wizardProviders[i]
+      : getFirstLauncherProvider();
     const selectedProvider = providerCatalog[selectedKey] || {};
     const selectedMeta = getProviderMeta(selectedKey, selectedProvider);
 

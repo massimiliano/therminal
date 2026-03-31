@@ -170,6 +170,14 @@
             </button>
             <button
               type="button"
+              data-provider="copilot"
+              class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
+            >
+              <i class="bi bi-github text-sky-300"></i>
+              <span>Copilot CLI</span>
+            </button>
+            <button
+              type="button"
               data-provider="browser"
               class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
             >
@@ -187,14 +195,6 @@
           <i class="bi bi-diagram-3"></i>
           <span>Contesto</span>
         </button>
-        <span
-          id="gitToolbarBadge"
-          class="workspace-only hidden inline-flex items-center gap-1.5 rounded-full border border-zinc-700/60 bg-th-body px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 select-none"
-          title="Stato Git del workspace"
-        >
-          <span id="gitToolbarDot" class="inline-block w-1.5 h-1.5 rounded-full bg-zinc-500"></span>
-          <span id="gitToolbarText">Git n/d</span>
-        </span>
         <div class="workspace-only hidden w-px h-4 bg-zinc-800 mx-0.5"></div>
         <button
           id="broadcastToggle"
@@ -286,22 +286,82 @@
           </div>
         </div>
 
+        <div id="homePageTabs" class="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-zinc-800/70 bg-th-surface/80 px-2 py-2 backdrop-blur-sm">
+          <button type="button" class="home-page-tab is-active" data-home-page="home">
+            Home
+          </button>
+          <button type="button" class="home-page-tab" data-home-page="usage">
+            Utilizzo
+          </button>
+          <button type="button" class="home-page-tab" data-home-page="status">
+            Stato servizi
+          </button>
+          <button type="button" class="home-page-tab" data-home-page="agents">
+            Agent Creator
+          </button>
+        </div>
+
         <div id="homeOverview" class="flex flex-col gap-6">
           <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6 items-stretch">
-            <section class="min-w-0 rounded-2xl border border-zinc-800/70 bg-th-bg/70 px-6 py-7 xl:px-10 xl:py-8 flex items-center justify-center">
+            <section class="home-overview-panel min-w-0 rounded-2xl border border-zinc-800/70 px-6 py-7 xl:px-10 xl:py-8 flex items-center justify-center">
               <div class="w-full min-w-0">
                 <div id="step1" class="w-full max-w-5xl mx-auto flex flex-col justify-center gap-10 min-h-0">
-                  <div class="text-center">
-                    <img src="../logo.png" alt="Therminal" class="w-32 h-32 mx-auto mb-3" />
-                    <h1 class="text-2xl font-bold mb-1 text-white tracking-tight">Therminal</h1>
-                    <p class="text-zinc-500 text-sm mb-8">Multi-session launcher per CLI AI &middot; Claude &middot; Codex &middot; Gemini &middot; Terminale &middot; LazyGit</p>
-                    <div class="flex justify-center gap-3 flex-wrap" id="countOptions"></div>
-                  </div>
+                <div class="text-center">
+                  <img src="../logo.png" alt="Therminal" class="w-32 h-32 mx-auto mb-3" />
+                  <h1 class="text-2xl font-bold mb-1 text-white tracking-tight">Therminal</h1>
+                  <div class="flex justify-center gap-3 flex-wrap" id="countOptions"></div>
+                </div>
 
-                  <div id="savedSection" class="grid grid-cols-1 2xl:grid-cols-2 gap-8 px-0 2xl:px-4 hidden">
-                    <div id="sessionSection" class="hidden">
-                      <p class="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-3">
-                        <i class="bi bi-collection text-emerald-400 mr-1"></i>
+                <div class="agent-creator-hero-grid">
+                  <article class="agent-creator-hero-card">
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0">
+                        <p class="wizard-eyebrow">Agent Creator</p>
+                        <h2 class="agent-creator-hero-title">Apri una sessione Claude o Codex nel progetto e lancia il prompt bootstrap.</h2>
+                      </div>
+                      <span class="agent-creator-hero-badge">
+                        <i class="bi bi-stars"></i>
+                        Nuovo
+                      </span>
+                    </div>
+                    <p class="agent-creator-hero-copy">
+                      Seleziona il path del progetto e avvia una singola sessione del provider orchestratore che analizza la codebase e prepara i file agent nel formato corretto.
+                    </p>
+                    <div class="agent-creator-hero-tags">
+                      <span><i class="bi bi-folder2-open"></i> Project path</span>
+                      <span><i class="bi bi-file-earmark-code"></i> Prompt bootstrap</span>
+                      <span><i class="bi bi-diagram-3"></i> `.codex/agents/` o `.claude/agents/`</span>
+                    </div>
+                  </article>
+
+                  <button id="agentCreatorIntroBtn" type="button" class="agent-creator-hero-cta">
+                    <div class="agent-creator-hero-cta-copy">
+                      <p class="wizard-eyebrow">Accesso rapido</p>
+                      <h3>Apri Agent Creator</h3>
+                      <p>Scorri al pannello dedicato e prepara la generazione degli agenti.</p>
+                    </div>
+                    <span class="agent-creator-hero-cta-icon">
+                      <i class="bi bi-arrow-down-right"></i>
+                    </span>
+                  </button>
+                </div>
+
+                <div id="savedSectionEmpty" class="hidden rounded-2xl border border-dashed border-zinc-700/70 bg-th-surface/60 p-4">
+                  <div class="flex items-start gap-3">
+                    <i class="bi bi-collection text-emerald-400 mt-0.5"></i>
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold text-white">Nessuna sessione o preset salvato</p>
+                      <p class="mt-1 text-sm text-zinc-500">
+                        Avvia un workspace, poi salva una sessione o un preset per ritrovarli qui.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="savedSection" class="grid grid-cols-1 2xl:grid-cols-2 gap-8 px-0 2xl:px-4 hidden">
+                  <div id="sessionSection" class="hidden">
+                    <p class="text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-3">
+                      <i class="bi bi-collection text-emerald-400 mr-1"></i>
                         Sessioni salvate
                       </p>
                       <div
@@ -322,6 +382,112 @@
                     </div>
                   </div>
                 </div>
+
+                <section id="agentCreatorSection" class="agent-creator-panel">
+                  <div class="wizard-panel-head">
+                    <div class="min-w-0">
+                      <p class="wizard-eyebrow">Agent Creator</p>
+                      <h2 class="wizard-panel-title">Seleziona il progetto, scegli il provider e avvia il prompt bootstrap</h2>
+                      <p class="wizard-panel-copy">
+                        Agent Creator apre una singola sessione del provider selezionato nel path scelto e invia un prompt fisso che analizza la codebase e genera i file agent nel formato richiesto.
+                      </p>
+                    </div>
+                    <span id="agentCreatorProviderBadge" class="agent-creator-panel-badge">
+                      <i class="bi bi-terminal"></i>
+                      Codex
+                    </span>
+                  </div>
+
+                  <div class="agent-creator-panel-grid">
+                    <div class="agent-creator-panel-main">
+                      <div class="agent-creator-field">
+                        <label class="wizard-field-label">Provider orchestratore</label>
+                        <div class="agent-creator-provider-picker">
+                          <button
+                            id="agentCreatorProviderCodexBtn"
+                            type="button"
+                            class="wizard-provider-pill is-selected"
+                            data-agent-creator-provider="codex"
+                            aria-pressed="true"
+                          >
+                            <span class="wizard-provider-badge">Codex</span>
+                            <span class="wizard-provider-check">
+                              <i class="bi bi-check-lg"></i>
+                            </span>
+                          </button>
+                          <button
+                            id="agentCreatorProviderClaudeBtn"
+                            type="button"
+                            class="wizard-provider-pill"
+                            data-agent-creator-provider="claude"
+                            aria-pressed="false"
+                          >
+                            <span class="wizard-provider-badge">Claude</span>
+                            <span class="wizard-provider-check">
+                              <i class="bi bi-check-lg"></i>
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="agent-creator-field">
+                        <label class="wizard-field-label" for="agentCreatorProjectPath">Project path</label>
+                        <div class="agent-creator-cwd-row">
+                          <input
+                            id="agentCreatorProjectPath"
+                            type="text"
+                            value="."
+                            placeholder="Scrivi o incolla il path del progetto"
+                            class="wizard-input wizard-input-mono"
+                          />
+                          <button
+                            id="agentCreatorBrowseBtn"
+                            type="button"
+                            class="wizard-secondary-btn agent-creator-browse-btn"
+                            title="Apri selettore directory"
+                          >
+                            <i class="bi bi-folder2-open"></i>
+                            <span>Sfoglia</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="agent-creator-field">
+                        <label class="wizard-field-label" for="agentCreatorPrompt">Prompt bootstrap</label>
+                        <textarea
+                          id="agentCreatorPrompt"
+                          class="wizard-input agent-creator-textarea"
+                          rows="10"
+                          readonly
+                          spellcheck="false"
+                        ></textarea>
+                      </div>
+                    </div>
+
+                    <aside class="agent-creator-panel-side">
+                      <div class="agent-creator-side-card">
+                        <p class="wizard-eyebrow">Bootstrap flow</p>
+                        <h3 class="agent-creator-side-title">Una sola sessione, nessun conteggio manuale</h3>
+                        <p class="agent-creator-side-intro">
+                          Therminal apre una sola sessione del provider selezionato. Sara il prompt bootstrap a chiedere come strutturare gli agenti e quali file generare.
+                        </p>
+                        <ul class="agent-creator-checklist">
+                          <li><i class="bi bi-check2-circle"></i><span>Avvio di una sola sessione del provider selezionato nel path scelto</span></li>
+                          <li><i class="bi bi-check2-circle"></i><span>Analisi della codebase direttamente dal repository reale</span></li>
+                          <li><i class="bi bi-check2-circle"></i><span>Output richiesto esclusivamente dentro <code id="agentCreatorOutputPath">.codex/agents/</code></span></li>
+                          <li><i class="bi bi-check2-circle"></i><span>Formato agent coerente con <span id="agentCreatorOutputFormat">TOML</span></span></li>
+                        </ul>
+                        <p id="agentCreatorSummary" class="agent-creator-side-note">
+                          Verrà avviata una singola sessione Codex nel progetto selezionato.
+                        </p>
+                        <button id="agentCreatorLaunchBtn" type="button" class="wizard-primary-btn agent-creator-launch-btn">
+                          <span>Avvia Codex</span>
+                          <i class="bi bi-play-fill"></i>
+                        </button>
+                      </div>
+                    </aside>
+                  </div>
+                </section>
               </div>
             </section>
 
@@ -375,7 +541,7 @@
           </div>
         </div>
 
-        <div id="step2" class="hidden w-full max-w-[1500px] mx-auto min-w-0 px-4 xl:px-6">
+        <div id="step2" class="hidden w-full min-w-0 mt-2">
           <div class="wizard-shell wizard-shell-compact">
             <section class="wizard-panel wizard-panel-toolbar">
               <div class="wizard-panel-head wizard-panel-head-compact">
@@ -671,6 +837,18 @@
             </p>
 
             <div class="flex flex-col gap-3">
+              <label class="flex items-center gap-2 rounded-xl border border-th-border-lt bg-th-body px-3 py-2.5">
+                <input
+                  id="voiceEnabledCheckbox"
+                  type="checkbox"
+                  class="accent-emerald-500"
+                />
+                <span class="text-xs text-zinc-300">
+                  Abilita il voice integrato di Therminal
+                </span>
+              </label>
+
+              <div id="voiceConfigFields" class="flex flex-col gap-3">
               <label class="block">
                 <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
                   Provider
@@ -797,6 +975,7 @@
                 >
                   Salva voice
                 </button>
+              </div>
               </div>
             </div>
           </section>
@@ -1181,36 +1360,6 @@
               placeholder="Scrivi qui il contesto condiviso del workspace..."
               class="w-full min-h-[280px] resize-y bg-th-body border border-th-border-lt rounded-xl px-4 py-3 text-sm font-mono leading-6 text-th-fg outline-none focus:border-emerald-400/35"
             ></textarea>
-          </section>
-
-          <section class="rounded-2xl border border-zinc-800/70 bg-th-bg/70 p-4">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <p class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
-                  Git Snapshot
-                </p>
-                <p id="sharedContextGitMeta" class="mt-1 text-xs text-zinc-500 break-all">
-                  Nessun repository Git rilevato.
-                </p>
-              </div>
-              <div class="flex items-center gap-2 shrink-0">
-                <button
-                  id="sharedContextRefreshGitBtn"
-                  type="button"
-                  class="rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
-                >
-                  Refresh Git
-                </button>
-                <button
-                  id="sharedContextAppendGitBtn"
-                  type="button"
-                  class="rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
-                >
-                  Appendi snapshot
-                </button>
-              </div>
-            </div>
-            <div id="sharedContextGitFiles" class="mt-3 flex flex-wrap gap-2"></div>
           </section>
 
           <section class="flex items-center justify-between gap-3 flex-wrap">

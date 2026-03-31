@@ -62,7 +62,6 @@ Non serve avere tutti i CLI installati. Therminal rileva i binari disponibili ne
 
 - Ogni pannello ha un task status ciclico: `Todo`, `Running`, `Blocked`, `Done`.
 - Il task status viene salvato anche nelle sessioni persistite.
-- Toolbar Git con branch e dirty state del workspace attivo.
 - Contesto condiviso del workspace con note e handoff strutturato.
 
 ### Handoff e shared context
@@ -75,7 +74,6 @@ Il pannello `Contesto` permette di mantenere stato condiviso del workspace e inv
 - Acquisizione della selezione dal terminale attivo.
 - Acquisizione delle ultime righe dell'output.
 - Generazione rapida di un summary dalla sessione attiva.
-- Snapshot Git con branch, ahead/behind e lista file modificati.
 - Invio del contesto alla sessione AI attiva o a tutte le sessioni AI del workspace.
 - Esclusione automatica di `Terminale`, `LazyGit` e `Browser` dall'invio dell'handoff, per non trattare il testo come comandi shell.
 

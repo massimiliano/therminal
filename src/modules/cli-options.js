@@ -91,6 +91,11 @@ export function buildClientCommand(provider, inlineArgs = "") {
   const baseCommand = providerCatalog[provider]?.defaultCommand ?? provider;
   const tail = typeof inlineArgs === "string" ? inlineArgs.trim() : "";
 
+  if (provider === "copilot" && tail) {
+    const normalizedTail = tail.startsWith("-") ? tail : quoteIfNeeded(tail);
+    return `${baseCommand} ${normalizedTail}`.trim();
+  }
+
   if (baseCommand && tail) return `${baseCommand} ${tail}`.trim();
   if (baseCommand) return baseCommand.trim();
   return tail;

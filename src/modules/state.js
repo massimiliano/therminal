@@ -14,6 +14,7 @@ export const scheduledFit = new Map();
 export const state = {
   workspaceCounter: 0,
   activeView: "home",
+  homePage: "home",
   wizardStep: 1,
   wizardClientCount: 0,
   wizardProviders: [],
@@ -43,6 +44,13 @@ export const PROVIDER_STYLE = {
     quick: "text-blue-400 hover:border-blue-500/35 hover:bg-blue-500/5",
     card: "border-blue-500/20 shadow-[0_0_12px_rgba(59,130,246,0.03)]",
     dot: "bg-blue-500/25 text-blue-400",
+  },
+  copilot: {
+    badge: "bg-sky-500/15 text-sky-300",
+    toggle: "bg-sky-500/10 border-sky-500/30 text-sky-300",
+    quick: "text-sky-300 hover:border-sky-500/35 hover:bg-sky-500/5",
+    card: "border-sky-500/20 shadow-[0_0_12px_rgba(56,189,248,0.03)]",
+    dot: "bg-sky-500/25 text-sky-300",
   },
   gemini: {
     badge: "bg-violet-500/15 text-violet-400",

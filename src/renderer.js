@@ -15,6 +15,8 @@ import { refreshProviderCatalog } from "./modules/providers.js";
 import { initVoiceToText } from "./modules/voice.js";
 import { initSharedContext } from "./modules/shared-context.js";
 import { initCliOperationsModal } from "./modules/cli-operations.js";
+import { initAgentCreator } from "./modules/agent-creator.js";
+import { initHomePages } from "./modules/home-pages.js";
 
 async function bootstrap() {
   if (!TerminalCtor || !FitAddonCtor || !window.launcherAPI) {
@@ -41,10 +43,12 @@ async function bootstrap() {
     bindKeyboardShortcuts();
     initShortcutsModal();
     initCliOperationsModal();
+    initHomePages();
     initMonitor();
     initServiceStatusPanel();
     initUsagePanel();
     initSharedContext();
+    initAgentCreator();
     await initVoiceToText();
   } catch (error) {
     console.error("Bootstrap failed:", error);

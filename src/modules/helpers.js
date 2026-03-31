@@ -95,5 +95,7 @@ export function refitWorkspace(workspace, options) {
 export function updateSavedSection() {
   const hasSession = !dom.sessionSection.classList.contains("hidden");
   const hasPreset = !dom.presetSection.classList.contains("hidden");
-  dom.savedSection.classList.toggle("hidden", !hasSession && !hasPreset);
+  const hasSavedContent = hasSession || hasPreset;
+  dom.savedSection.classList.toggle("hidden", !hasSavedContent);
+  dom.savedSectionEmpty?.classList.toggle("hidden", hasSavedContent);
 }

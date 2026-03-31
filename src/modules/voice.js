@@ -10,6 +10,7 @@ const DEFAULT_VOICE_PROVIDER = "local";
 const DEFAULT_GROQ_MODEL = "whisper-large-v3-turbo";
 
 let voiceConfig = {
+  enabled: true,
   provider: DEFAULT_VOICE_PROVIDER,
   whisperCliPath: "",
   modelPath: "",
@@ -41,6 +42,10 @@ function getVoiceProvider(config = voiceConfig) {
   return config?.provider === "groq" ? "groq" : DEFAULT_VOICE_PROVIDER;
 }
 
+function isVoiceEnabled(config = voiceConfig) {
+  return Boolean(config?.enabled);
+}
+
 function isGroqVoiceProvider(config = voiceConfig) {
   return getVoiceProvider(config) === "groq";
 }
@@ -50,6 +55,10 @@ function getSelectedVoiceProvider() {
 }
 
 function isVoiceConfigured(config = voiceConfig) {
+  if (!isVoiceEnabled(config)) {
+    return false;
+  }
+
   if (isGroqVoiceProvider(config)) {
     return Boolean(config?.groqApiKey && config?.groqModel);
   }
@@ -87,6 +96,14 @@ function getToolbarReadyLabel(config = voiceConfig) {
 }
 
 function renderVoiceProviderFields(provider = getSelectedVoiceProvider()) {
+  const enabled = isVoiceEnabled();
+  dom.voiceConfigFields?.classList.toggle("hidden", !enabled);
+  if (!enabled) {
+    dom.voiceLocalFields?.classList.add("hidden");
+    dom.voiceGroqFields?.classList.add("hidden");
+    return;
+  }
+
   const showGroq = provider === "groq";
   dom.voiceLocalFields?.classList.toggle("hidden", showGroq);
   dom.voiceGroqFields?.classList.toggle("hidden", !showGroq);
@@ -124,6 +141,17 @@ function getVoiceStatusMeta() {
     };
   }
 
+  if (!isVoiceEnabled()) {
+    return {
+      label: "Disattivato",
+      detail: "Voice integrato disattivato. Puoi usare un sistema esterno senza configurare Therminal.",
+      badgeClass: "border-zinc-700/60 bg-th-body text-zinc-400",
+      dotClass: "bg-zinc-500",
+      toolbarClass: "border-zinc-700/60 bg-th-body text-zinc-500",
+      toolbarLabel: "Off"
+    };
+  }
+
   if (isVoiceConfigured()) {
     return {
       label: "Pronto",
@@ -146,6 +174,9 @@ function getVoiceStatusMeta() {
 }
 
 function renderVoiceConfig() {
+  if (dom.voiceEnabledCheckbox) {
+    dom.voiceEnabledCheckbox.checked = isVoiceEnabled();
+  }
   if (dom.voiceProviderSelect) {
     dom.voiceProviderSelect.value = getVoiceProvider();
   }
@@ -197,6 +228,7 @@ function renderVoiceStatus() {
 
 function getVoiceConfigPayload() {
   return {
+    enabled: Boolean(dom.voiceEnabledCheckbox?.checked),
     provider: getSelectedVoiceProvider(),
     whisperCliPath: dom.voiceWhisperPathInput?.value?.trim() || "",
     modelPath: dom.voiceModelPathInput?.value?.trim() || "",
@@ -214,7 +246,7 @@ async function refreshVoiceConfig() {
 }
 
 async function warmVoiceModel({ notify = false } = {}) {
-  if (!window.launcherAPI?.warmVoiceModel || isGroqVoiceProvider() || !isVoiceConfigured()) {
+  if (!window.launcherAPI?.warmVoiceModel || !isVoiceEnabled() || isGroqVoiceProvider() || !isVoiceConfigured()) {
     return null;
   }
 
@@ -276,6 +308,13 @@ async function saveVoiceSettings() {
   voiceConfig = await window.launcherAPI.saveVoiceConfig(getVoiceConfigPayload());
   renderVoiceConfig();
   renderVoiceStatus();
+  if (!isVoiceEnabled()) {
+    if (voiceCapture.phase === "recording") {
+      await stopVoiceCapture({ cancelled: true });
+    }
+    showNotice("Voice integrato disattivato.", { type: "success", timeoutMs: 2500 });
+    return;
+  }
   const warmup = await warmVoiceModel({ notify: true });
   if (!warmup || (warmup.mode !== "server" && !warmup.error)) {
     showNotice("Configurazione voice salvata.", { type: "success", timeoutMs: 2500 });
@@ -482,6 +521,10 @@ async function startVoiceCapture() {
     return;
   }
 
+  if (!isVoiceEnabled()) {
+    return;
+  }
+
   if (!isVoiceConfigured()) {
     showNotice(getVoiceConfigRequirementText(), {
       type: "warning",
@@ -632,6 +675,10 @@ function bindPushToTalkShortcut() {
   document.addEventListener(
     "keydown",
     (event) => {
+      if (!isVoiceEnabled()) {
+        return;
+      }
+
       if (isPushToTalkKey(event)) {
         pressedKeys.add(event.code);
       }
@@ -662,6 +709,11 @@ function bindPushToTalkShortcut() {
         return;
       }
 
+      if (!isVoiceEnabled()) {
+        pressedKeys.delete(event.code);
+        return;
+      }
+
       const wasActive = isPushToTalkActive();
       pressedKeys.delete(event.code);
       const isActiveAfterRelease = isPushToTalkActive();
@@ -686,6 +738,14 @@ function bindPushToTalkShortcut() {
 }
 
 function bindVoiceUi() {
+  dom.voiceEnabledCheckbox?.addEventListener("change", () => {
+    voiceConfig = {
+      ...voiceConfig,
+      enabled: Boolean(dom.voiceEnabledCheckbox?.checked)
+    };
+    renderVoiceProviderFields(getSelectedVoiceProvider());
+    renderVoiceStatus();
+  });
   dom.voiceProviderSelect?.addEventListener("change", () => {
     renderVoiceProviderFields(getSelectedVoiceProvider());
   });

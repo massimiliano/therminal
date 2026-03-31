@@ -3,6 +3,7 @@ import { dom } from "./dom.js";
 import { refitWorkspace } from "./helpers.js";
 import { syncSharedContextUi } from "./shared-context.js";
 import { openNameModal } from "./name-modal.js";
+import { showHomePage } from "./home-pages.js";
 
 const TAB_CLS =
   "flex items-center gap-1.5 px-3 rounded-md text-xs font-medium cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px]";
@@ -197,6 +198,7 @@ export function switchView(viewId) {
   });
 
   if (isHome) {
+    showHomePage(state.homePage || "home", { scroll: false });
     dom.workspaceContainer
       .querySelectorAll(".workspace-grid")
       .forEach((el) => el.classList.add("hidden"));

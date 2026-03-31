@@ -15,6 +15,10 @@ const SERVICE_META = {
     icon: "bi bi-lightning-charge",
     fallbackLabel: "status.claude.com"
   },
+  github: {
+    icon: "bi bi-github",
+    fallbackLabel: "www.githubstatus.com"
+  },
   aistudio: {
     icon: "bi bi-google",
     fallbackLabel: "aistudio.google.com"
