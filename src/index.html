@@ -14,6 +14,7 @@
     <title>Therminal</title>
     <link rel="icon" href="../logo.png" />
 
+    <script src="./boot-guard.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="./tailwind-config.js"></script>
 
@@ -32,8 +33,30 @@
   </head>
 
   <body
-    class="bg-th-bg text-zinc-200 h-screen flex flex-col overflow-hidden font-sans"
+    class="app-loading bg-th-bg text-zinc-200 h-screen flex flex-col overflow-hidden font-sans"
   >
+    <div
+      id="appBootOverlay"
+      data-state="loading"
+      class="fixed inset-0 z-[260] flex items-center justify-center px-6"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div class="app-boot-overlay__backdrop absolute inset-0"></div>
+      <div class="app-boot-overlay__panel relative flex w-full max-w-sm flex-col items-center rounded-[28px] border border-emerald-400/20 px-8 py-9 text-center shadow-[0_28px_90px_rgba(0,0,0,0.45)]">
+        <div class="app-boot-overlay__spinner" aria-hidden="true"></div>
+        <p class="mt-5 text-[11px] font-semibold uppercase tracking-[0.34em] text-emerald-300/80">
+          Therminal
+        </p>
+        <h1 id="appBootOverlayTitle" class="mt-3 text-2xl font-semibold text-zinc-50">
+          Avvio dell'applicazione
+        </h1>
+        <p id="appBootOverlayStatus" class="app-boot-overlay__status mt-3 text-sm text-zinc-400">
+          Inizializzazione interfaccia in corso...
+        </p>
+      </div>
+    </div>
+
     <div
       id="appNotice"
       class="fixed top-12 right-4 z-[220] hidden max-w-md rounded-xl border px-4 py-3 shadow-[0_16px_48px_rgba(0,0,0,0.45)] backdrop-blur-md"
@@ -619,6 +642,7 @@
     </div>
 
     <div id="workspaceContainer" class="flex-1 hidden overflow-hidden relative">
+
       <div
         id="workspaceDragBadge"
         class="pointer-events-none absolute top-4 right-4 z-[30] hidden rounded-full border border-emerald-400/30 bg-th-surface/95 px-3 py-1.5 text-[11px] font-medium text-emerald-200 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-md"

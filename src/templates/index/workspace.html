@@ -1,0 +1,579 @@
+      <div
+        id="workspaceDragBadge"
+        class="pointer-events-none absolute top-4 right-4 z-[30] hidden rounded-full border border-emerald-400/30 bg-th-surface/95 px-3 py-1.5 text-[11px] font-medium text-emerald-200 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-md"
+      ></div>
+      <div
+        id="broadcastBar"
+        class="absolute bottom-0 left-0 right-0 flex items-center gap-2 px-3 py-1.5 bg-th-surface/95 border-t border-emerald-400/25 backdrop-blur-lg z-10 hidden"
+      >
+        <i class="bi bi-broadcast text-emerald-400"></i>
+        <input
+          id="broadcastInput"
+          type="text"
+          class="flex-1 bg-th-body border border-th-border-lt rounded-md px-3 py-1.5 text-sm font-mono text-th-fg outline-none focus:border-emerald-400/35"
+          placeholder="Invia comando a tutti i terminali... (Invio per inviare)"
+        />
+        <span class="text-[10px] text-zinc-600 select-none"
+          >ESC per chiudere</span
+        >
+      </div>
+    </div>
+
+    <div
+      id="maximizeOverlay"
+      class="fixed inset-0 z-50 bg-th-bg flex flex-col hidden"
+    >
+      <div
+        id="maximizeHead"
+        class="flex items-center px-2 py-1 bg-th-surface border-b border-th-border h-9 shrink-0"
+      >
+        <button
+          id="maximizeCloseBtn"
+          class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
+        >
+          <i class="bi bi-arrows-angle-contract"></i>
+          <span>Ripristina</span>
+        </button>
+      </div>
+      <div id="maximizeBody" class="flex-1 min-h-0 flex flex-col"></div>
+    </div>
+
+    <div
+      id="presetNameModal"
+      class="fixed inset-0 z-[100] flex items-center justify-center hidden"
+    >
+      <div
+        id="presetNameBackdrop"
+        class="shortcuts-backdrop absolute inset-0 bg-black/50 backdrop-blur-sm"
+      ></div>
+      <div
+        class="relative w-[360px] bg-th-card border border-th-border-lt rounded-xl shadow-[0_24px_64px_rgba(0,0,0,0.38)] p-5"
+      >
+        <h3 id="presetNameTitle" class="text-sm font-bold text-th-fg mb-3">Salva preset</h3>
+        <input
+          id="presetNameInput"
+          type="text"
+          placeholder="Nome del preset..."
+          class="w-full bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-sm font-sans text-th-fg outline-none mb-3.5 box-border focus:border-emerald-400/35"
+        />
+        <div class="flex justify-end gap-2">
+          <button
+            id="presetNameCancel"
+            class="px-4 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all duration-150 bg-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
+          >
+            Annulla
+          </button>
+          <button
+            id="presetNameConfirm"
+            class="px-4 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all duration-150 bg-emerald-400/10 border border-emerald-400/30 text-emerald-400 hover:bg-emerald-400/20 hover:border-emerald-400"
+          >
+            Salva
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="shortcutsModal"
+      class="fixed inset-0 z-[100] flex items-center justify-center hidden"
+    >
+      <div
+        class="shortcuts-backdrop absolute inset-0 bg-black/50 backdrop-blur-sm"
+      ></div>
+      <div
+        class="relative w-[520px] max-h-[80vh] bg-th-card border border-th-border-lt rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.38)] flex flex-col overflow-hidden"
+      >
+        <div
+          class="flex items-center justify-between px-5 py-4 border-b border-th-border shrink-0"
+        >
+          <h2 class="text-base font-bold text-th-fg tracking-tight">
+            Therminal
+          </h2>
+          <button
+            id="shortcutsCloseBtn"
+            class="w-7 h-7 flex items-center justify-center bg-transparent text-zinc-600 cursor-pointer rounded-md text-sm transition-all duration-150 hover:text-zinc-300 hover:bg-zinc-800"
+          >
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="px-5 py-4 overflow-y-auto">
+          <section class="mb-4">
+            <p class="text-sm text-zinc-400 leading-relaxed mb-2.5">
+              Launcher multi-sessione per CLI AI (Claude, Codex, Gemini, Terminale, LazyGit) su
+              Windows. Basato su Electron, xterm.js e node-pty.
+            </p>
+            <p class="text-xs text-zinc-500 leading-relaxed">
+              Se chiudi il banner home, qui puoi comunque controllare i CLI rilevati e
+              aggiornare lo stato senza riavviare l'app.
+            </p>
+          </section>
+
+          <div class="h-px bg-th-border my-3"></div>
+
+          <section class="mb-4">
+            <div class="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3
+                  class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest"
+                >
+                  Rilevamento Provider
+                </h3>
+                <p class="text-xs text-zinc-500 mt-1">
+                  Stato locale dei CLI richiesti da Therminal.
+                </p>
+              </div>
+              <button
+                id="shortcutsProviderRefreshBtn"
+                type="button"
+                class="shrink-0 rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
+              >
+                Rileva di nuovo
+              </button>
+            </div>
+            <div id="shortcutsProviderList" class="flex flex-col gap-2"></div>
+          </section>
+
+          <div class="h-px bg-th-border my-3"></div>
+
+          <section class="mb-4">
+            <div class="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3
+                  class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest"
+                >
+                  Scorciatoie
+                </h3>
+                <p class="text-xs text-zinc-500 mt-1">
+                  Registra o reimposta le shortcut principali dell'app.
+                </p>
+              </div>
+              <button
+                id="shortcutsSaveBtn"
+                type="button"
+                class="shrink-0 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-200 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 hover:text-white"
+              >
+                Salva shortcut
+              </button>
+            </div>
+            <div id="shortcutEditorList" class="flex flex-col gap-2"></div>
+            <p class="text-[11px] text-zinc-500 leading-relaxed mt-3">
+              Usa "Registra" per catturare una combinazione con almeno un modificatore.
+            </p>
+          </section>
+
+          <div class="h-px bg-th-border my-3"></div>
+
+          <section class="mb-4">
+            <div class="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3
+                  class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest"
+                >
+                  Preset messaggi
+                </h3>
+                <p class="text-xs text-zinc-500 mt-1">
+                  Crea messaggi generici riutilizzabili per qualsiasi terminale o CLI.
+                </p>
+              </div>
+              <button
+                id="openOperationsFromShortcutsBtn"
+                type="button"
+                class="shrink-0 rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
+              >
+                Apri operazioni
+              </button>
+            </div>
+            <p class="text-xs text-zinc-500 leading-relaxed">
+              Puoi segnare fino a 5 preset come preferiti: verranno mostrati nell'header di ogni terminale.
+            </p>
+          </section>
+
+          <div class="h-px bg-th-border my-3"></div>
+
+          <section class="mb-4">
+            <div class="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3
+                  class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest"
+                >
+                  Voice To Text
+                </h3>
+                <p class="text-xs text-zinc-500 mt-1">
+                  Scegli tra Whisper locale via `whisper.cpp` oppure Groq cloud.
+                </p>
+              </div>
+              <span
+                id="voiceStatusBadge"
+                class="inline-flex items-center gap-1.5 rounded-full border border-zinc-700/60 bg-th-body px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-400"
+              >
+                <span id="voiceStatusDot" class="inline-block w-1.5 h-1.5 rounded-full bg-zinc-500"></span>
+                <span id="voiceStatusLabel">Non configurato</span>
+              </span>
+            </div>
+
+            <p id="voiceStatusText" class="text-xs text-zinc-500 leading-relaxed mb-3">
+              Configura il provider voice e poi tieni premuto Shift+Alt+Z per registrare e rilasciare la trascrizione nella sessione attiva.
+            </p>
+
+            <div class="flex flex-col gap-3">
+              <label class="flex items-center gap-2 rounded-xl border border-th-border-lt bg-th-body px-3 py-2.5">
+                <input
+                  id="voiceEnabledCheckbox"
+                  type="checkbox"
+                  class="accent-emerald-500"
+                />
+                <span class="text-xs text-zinc-300">
+                  Abilita il voice integrato di Therminal
+                </span>
+              </label>
+
+              <div id="voiceConfigFields" class="flex flex-col gap-3">
+              <label class="block">
+                <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                  Provider
+                </span>
+                <select
+                  id="voiceProviderSelect"
+                  class="w-full bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-xs font-mono text-th-fg outline-none focus:border-emerald-400/35"
+                >
+                  <option value="local">Whisper locale</option>
+                  <option value="groq">Groq cloud</option>
+                </select>
+              </label>
+
+              <div id="voiceLocalFields" class="flex flex-col gap-3">
+              <label class="block">
+                <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                  Binario whisper.cpp
+                </span>
+                <div class="flex items-center gap-2">
+                  <input
+                    id="voiceWhisperPathInput"
+                    type="text"
+                    placeholder="Percorso di whisper-cli.exe"
+                    class="flex-1 min-w-0 bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-xs font-mono text-th-fg outline-none focus:border-emerald-400/35"
+                  />
+                  <button
+                    id="voicePickBinaryBtn"
+                    type="button"
+                    class="shrink-0 rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
+                  >
+                    Sfoglia
+                  </button>
+                </div>
+              </label>
+
+              <label class="block">
+                <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                  Modello locale
+                </span>
+                <div class="flex items-center gap-2">
+                  <input
+                    id="voiceModelPathInput"
+                    type="text"
+                    placeholder="Percorso del modello .bin"
+                    class="flex-1 min-w-0 bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-xs font-mono text-th-fg outline-none focus:border-emerald-400/35"
+                  />
+                  <button
+                    id="voicePickModelBtn"
+                    type="button"
+                    class="shrink-0 rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
+                  >
+                    Sfoglia
+                  </button>
+                </div>
+              </label>
+              </div>
+
+              <div id="voiceGroqFields" class="hidden flex flex-col gap-3">
+                <label class="block">
+                  <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                    Groq API key
+                  </span>
+                  <input
+                    id="voiceGroqApiKeyInput"
+                    type="password"
+                    placeholder="gsk_..."
+                    autocomplete="off"
+                    spellcheck="false"
+                    class="w-full bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-xs font-mono text-th-fg outline-none focus:border-emerald-400/35"
+                  />
+                </label>
+
+                <label class="block">
+                  <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                    Modello Groq
+                  </span>
+                  <select
+                    id="voiceGroqModelSelect"
+                    class="w-full bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-xs font-mono text-th-fg outline-none focus:border-emerald-400/35"
+                  >
+                    <option value="whisper-large-v3-turbo">whisper-large-v3-turbo</option>
+                    <option value="whisper-large-v3">whisper-large-v3</option>
+                  </select>
+                </label>
+
+                <p class="text-[11px] text-zinc-600 leading-relaxed">
+                  Usa Groq per una trascrizione cloud veloce. Devi impostare una API key valida prima di usare il push-to-talk.
+                </p>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,180px)_1fr] gap-3">
+                <label class="block">
+                  <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                    Lingua
+                  </span>
+                  <input
+                    id="voiceLanguageInput"
+                    type="text"
+                    placeholder="it oppure auto"
+                    class="w-full bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-xs font-mono text-th-fg outline-none focus:border-emerald-400/35"
+                  />
+                </label>
+
+                <label class="flex items-center gap-2 rounded-xl border border-th-border-lt bg-th-body px-3 py-2.5 mt-[18px]">
+                  <input
+                    id="voiceAutoSubmitCheckbox"
+                    type="checkbox"
+                    class="accent-emerald-500"
+                  />
+                  <span class="text-xs text-zinc-400">
+                    Invia automaticamente `Enter` dopo la trascrizione
+                  </span>
+                </label>
+              </div>
+
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-[11px] text-zinc-600 leading-relaxed">
+                  In locale conviene partire da un modello CPU leggero. Con Groq puoi scegliere `whisper-large-v3` oppure `whisper-large-v3-turbo`.
+                </p>
+                <button
+                  id="voiceSaveSettingsBtn"
+                  type="button"
+                  class="shrink-0 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-200 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 hover:text-white"
+                >
+                  Salva voice
+                </button>
+              </div>
+              </div>
+            </div>
+          </section>
+
+          <div class="h-px bg-th-border my-3"></div>
+
+          <section class="mb-4">
+            <h3
+              class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-2"
+            >
+              Azioni per terminale
+            </h3>
+            <div class="grid grid-cols-3 gap-2">
+              <div
+                class="flex flex-col items-center gap-1 px-1.5 py-2.5 bg-th-body rounded-lg text-center"
+              >
+                <i class="bi bi-grip-vertical text-base text-zinc-500"></i>
+                <span class="text-[10px] text-zinc-600 leading-tight"
+                  >Trascina per riordinare</span
+                >
+              </div>
+              <div
+                class="flex flex-col items-center gap-1 px-1.5 py-2.5 bg-th-body rounded-lg text-center"
+              >
+                <i class="bi bi-search text-base text-zinc-500"></i>
+                <span class="text-[10px] text-zinc-600 leading-tight"
+                  >Cerca nel buffer</span
+                >
+              </div>
+              <div
+                class="flex flex-col items-center gap-1 px-1.5 py-2.5 bg-th-body rounded-lg text-center"
+              >
+                <i class="bi bi-download text-base text-zinc-500"></i>
+                <span class="text-[10px] text-zinc-600 leading-tight"
+                  >Esporta log (.log/.txt)</span
+                >
+              </div>
+              <div
+                class="flex flex-col items-center gap-1 px-1.5 py-2.5 bg-th-body rounded-lg text-center"
+              >
+                <i class="bi bi-arrows-fullscreen text-base text-zinc-500"></i>
+                <span class="text-[10px] text-zinc-600 leading-tight"
+                  >Massimizza</span
+                >
+              </div>
+              <div
+                class="flex flex-col items-center gap-1 px-1.5 py-2.5 bg-th-body rounded-lg text-center"
+              >
+                <i class="bi bi-arrow-clockwise text-base text-zinc-500"></i>
+                <span class="text-[10px] text-zinc-600 leading-tight"
+                  >Riavvia sessione</span
+                >
+              </div>
+              <div
+                class="flex flex-col items-center gap-1 px-1.5 py-2.5 bg-th-body rounded-lg text-center"
+              >
+                <i class="bi bi-x-lg text-base text-zinc-500"></i>
+                <span class="text-[10px] text-zinc-600 leading-tight"
+                  >Chiudi sessione</span
+                >
+              </div>
+            </div>
+          </section>
+
+          <div class="h-px bg-th-border my-3"></div>
+
+          <section class="last:mb-0">
+            <h3
+              class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-2"
+            >
+              Funzionalita
+            </h3>
+            <ul class="list-none p-0 m-0 flex flex-col gap-1.5">
+              <li class="text-xs text-zinc-400 flex items-center gap-2">
+                <i
+                  class="bi bi-link-45deg text-emerald-400 text-sm w-[18px] text-center shrink-0"
+                ></i>
+                Link cliccabili nell'output del terminale
+              </li>
+              <li class="text-xs text-zinc-400 flex items-center gap-2">
+                <i
+                  class="bi bi-bookmark-plus text-emerald-400 text-sm w-[18px] text-center shrink-0"
+                ></i>
+                Salvataggio preset per configurazioni frequenti
+              </li>
+              <li class="text-xs text-zinc-400 flex items-center gap-2">
+                <i
+                  class="bi bi-bell text-emerald-400 text-sm w-[18px] text-center shrink-0"
+                ></i>
+                Notifiche di sistema quando un processo termina in background
+              </li>
+              <li class="text-xs text-zinc-400 flex items-center gap-2">
+                <i
+                  class="bi bi-broadcast text-emerald-400 text-sm w-[18px] text-center shrink-0"
+                ></i>
+                Broadcast comandi a tutti i terminali
+              </li>
+              <li class="text-xs text-zinc-400 flex items-center gap-2">
+                <i
+                  class="bi bi-arrows-move text-emerald-400 text-sm w-[18px] text-center shrink-0"
+                ></i>
+                Drag &amp; drop per riordinare i pannelli
+              </li>
+              <li class="text-xs text-zinc-400 flex items-center gap-2">
+                <i
+                  class="bi bi-arrows-fullscreen text-emerald-400 text-sm w-[18px] text-center shrink-0"
+                ></i>
+                Focus / maximize su singolo terminale
+              </li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="operationsModal"
+      class="fixed inset-0 z-[110] flex items-center justify-center hidden"
+    >
+      <div
+        id="operationsBackdrop"
+        class="shortcuts-backdrop absolute inset-0 bg-black/50 backdrop-blur-sm"
+      ></div>
+      <div
+        class="relative w-[960px] max-h-[84vh] max-w-[calc(100vw-32px)] bg-th-card border border-th-border-lt rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.38)] flex flex-col overflow-hidden"
+      >
+          <div
+            class="flex items-center justify-between gap-4 px-5 py-4 border-b border-th-border shrink-0"
+          >
+            <div class="min-w-0">
+              <h2 class="text-base font-bold text-th-fg tracking-tight">
+                Preset Messaggi
+              </h2>
+            </div>
+            <button
+              id="operationsCloseBtn"
+              class="w-7 h-7 flex items-center justify-center bg-transparent text-zinc-600 cursor-pointer rounded-md text-sm transition-all duration-150 hover:text-zinc-300 hover:bg-zinc-800"
+            title="Chiudi operazioni CLI"
+          >
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="px-5 py-4 overflow-y-auto">
+          <div class="message-preset-shell">
+            <section id="operationsLibrarySection" class="message-preset-view">
+              <div class="message-preset-list-toolbar">
+                <button
+                  id="operationNewBtn"
+                  type="button"
+                  class="message-preset-toolbar-btn"
+                  title="Nuovo preset"
+                >
+                  <i class="bi bi-plus-lg"></i>
+                  <span>Nuovo</span>
+                </button>
+              </div>
+
+              <div id="operationsList" class="mt-3 flex flex-col gap-2.5"></div>
+            </section>
+
+            <section id="operationsEditorSection" class="message-preset-view hidden">
+              <div class="message-preset-editor-head">
+                <div class="message-preset-panel-head-main">
+                  <button
+                    id="operationBackBtn"
+                    type="button"
+                    class="message-preset-back-btn"
+                    title="Torna alla lista preset"
+                  >
+                    <i class="bi bi-arrow-left"></i>
+                    <span>Lista</span>
+                  </button>
+                  <div class="min-w-0">
+                    <h3 id="operationEditorTitle" class="message-preset-heading">
+                      Nuovo preset
+                    </h3>
+                  </div>
+                </div>
+              </div>
+
+              <label class="mt-3 block">
+                <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                  Nome preset
+                </span>
+                <input
+                  id="operationNameInput"
+                  type="text"
+                  placeholder="Es: Review finale"
+                  class="w-full bg-th-body border border-th-border-lt rounded-xl px-3 py-2.5 text-sm text-th-fg outline-none focus:border-emerald-400/35"
+                />
+              </label>
+
+              <label class="mt-4 block flex-1 min-h-[320px]">
+                <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                  Contenuto
+                </span>
+                <textarea
+                  id="operationContentInput"
+                  rows="12"
+                  placeholder="Scrivi qui il messaggio da inserire nel terminale selezionato..."
+                  class="w-full min-h-[320px] resize-y bg-th-body border border-th-border-lt rounded-[18px] px-3 py-3 text-sm font-mono leading-6 text-th-fg outline-none focus:border-emerald-400/35"
+                ></textarea>
+              </label>
+
+              <div class="message-preset-editor-footer mt-4">
+                <button
+                  id="operationSaveBtn"
+                  type="button"
+                  class="message-preset-primary-btn"
+                >
+                  <i class="bi bi-floppy"></i>
+                  <span>Salva</span>
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="sharedContextModal"

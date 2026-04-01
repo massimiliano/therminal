@@ -1,0 +1,21 @@
+export const sharedContextDom = {
+  sharedContextToggle: document.getElementById("sharedContextToggle"),
+  sharedContextModal: document.getElementById("sharedContextModal"),
+  sharedContextBackdrop: document.getElementById("sharedContextBackdrop"),
+  sharedContextCloseBtn: document.getElementById("sharedContextCloseBtn"),
+  sharedContextMeta: document.getElementById("sharedContextMeta"),
+  sharedContextTemplateSelect: document.getElementById("sharedContextTemplateSelect"),
+  sharedContextGoalInput: document.getElementById("sharedContextGoalInput"),
+  sharedContextConstraintsInput: document.getElementById("sharedContextConstraintsInput"),
+  sharedContextDecisionsInput: document.getElementById("sharedContextDecisionsInput"),
+  sharedContextNextStepInput: document.getElementById("sharedContextNextStepInput"),
+  sharedContextSummaryInput: document.getElementById("sharedContextSummaryInput"),
+  sharedContextInput: document.getElementById("sharedContextInput"),
+  sharedContextStatus: document.getElementById("sharedContextStatus"),
+  sharedContextCaptureSelectionBtn: document.getElementById("sharedContextCaptureSelectionBtn"),
+  sharedContextCaptureTailBtn: document.getElementById("sharedContextCaptureTailBtn"),
+  sharedContextGenerateSummaryBtn: document.getElementById("sharedContextGenerateSummaryBtn"),
+  sharedContextClearBtn: document.getElementById("sharedContextClearBtn"),
+  sharedContextSendActiveBtn: document.getElementById("sharedContextSendActiveBtn"),
+  sharedContextSendAllBtn: document.getElementById("sharedContextSendAllBtn")
+};

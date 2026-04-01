@@ -1,0 +1,203 @@
+      class="fixed inset-0 z-[100] flex items-center justify-center hidden"
+    >
+      <div
+        id="sharedContextBackdrop"
+        class="shortcuts-backdrop absolute inset-0 bg-black/50 backdrop-blur-sm"
+      ></div>
+      <div
+        class="relative w-[760px] max-h-[82vh] bg-th-card border border-th-border-lt rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.38)] flex flex-col overflow-hidden"
+      >
+        <div
+          class="flex items-center justify-between gap-4 px-5 py-4 border-b border-th-border shrink-0"
+        >
+          <div class="min-w-0">
+            <h2 class="text-base font-bold text-th-fg tracking-tight">
+              Contesto Condiviso
+            </h2>
+            <p
+              id="sharedContextMeta"
+              class="mt-1 text-xs text-zinc-500 truncate"
+            >
+              Workspace attivo
+            </p>
+          </div>
+          <button
+            id="sharedContextCloseBtn"
+            class="w-7 h-7 flex items-center justify-center bg-transparent text-zinc-600 cursor-pointer rounded-md text-sm transition-all duration-150 hover:text-zinc-300 hover:bg-zinc-800"
+            title="Chiudi contesto condiviso"
+          >
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="px-5 py-4 overflow-y-auto flex flex-col gap-4">
+          <section>
+            <p class="text-sm text-zinc-400 leading-relaxed">
+              Mantieni qui note, decisioni, handoff e stato condiviso del workspace.
+              Poi invialo alla sessione AI attiva o a tutte le CLI AI aperte.
+            </p>
+            <p class="text-xs text-zinc-500 mt-2 leading-relaxed">
+              Terminale e LazyGit vengono esclusi dall'invio automatico per evitare
+              di eseguire il testo come comandi shell.
+            </p>
+          </section>
+
+          <section class="grid grid-cols-1 lg:grid-cols-[minmax(0,220px)_1fr] gap-4">
+            <label class="block">
+              <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                Workflow
+              </span>
+              <select
+                id="sharedContextTemplateSelect"
+                class="w-full bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-xs font-mono text-th-fg outline-none focus:border-emerald-400/35"
+              >
+                <option value="general">General handoff</option>
+                <option value="spec-impl">Spec to implementation</option>
+                <option value="review-fix">Review and fix</option>
+                <option value="debug">Debug and recover</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                Obiettivo
+              </span>
+              <input
+                id="sharedContextGoalInput"
+                type="text"
+                placeholder="Obiettivo corrente del workspace"
+                class="w-full bg-th-body border border-th-border-lt rounded-lg px-3 py-2 text-xs font-mono text-th-fg outline-none focus:border-emerald-400/35"
+              />
+            </label>
+          </section>
+
+          <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <label class="block">
+              <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                Vincoli
+              </span>
+              <textarea
+                id="sharedContextConstraintsInput"
+                rows="4"
+                placeholder="Vincoli tecnici, di tempo o di qualità"
+                class="w-full resize-y bg-th-body border border-th-border-lt rounded-xl px-3 py-2 text-xs font-mono leading-6 text-th-fg outline-none focus:border-emerald-400/35"
+              ></textarea>
+            </label>
+            <label class="block">
+              <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                Decisioni
+              </span>
+              <textarea
+                id="sharedContextDecisionsInput"
+                rows="4"
+                placeholder="Decisioni gia prese nel workspace"
+                class="w-full resize-y bg-th-body border border-th-border-lt rounded-xl px-3 py-2 text-xs font-mono leading-6 text-th-fg outline-none focus:border-emerald-400/35"
+              ></textarea>
+            </label>
+          </section>
+
+          <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <label class="block">
+              <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                Prossimo step
+              </span>
+              <textarea
+                id="sharedContextNextStepInput"
+                rows="4"
+                placeholder="Passo successivo da eseguire"
+                class="w-full resize-y bg-th-body border border-th-border-lt rounded-xl px-3 py-2 text-xs font-mono leading-6 text-th-fg outline-none focus:border-emerald-400/35"
+              ></textarea>
+            </label>
+            <label class="block">
+              <span class="block text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+                Summary attivo
+              </span>
+              <textarea
+                id="sharedContextSummaryInput"
+                rows="4"
+                placeholder="Riassunto sintetico della sessione/task attivo"
+                class="w-full resize-y bg-th-body border border-th-border-lt rounded-xl px-3 py-2 text-xs font-mono leading-6 text-th-fg outline-none focus:border-emerald-400/35"
+              ></textarea>
+            </label>
+          </section>
+
+          <section class="flex flex-wrap items-center gap-2">
+            <button
+              id="sharedContextCaptureSelectionBtn"
+              type="button"
+              class="rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
+            >
+              Acquisisci selezione
+            </button>
+            <button
+              id="sharedContextCaptureTailBtn"
+              type="button"
+              class="rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
+            >
+              Acquisisci ultime righe
+            </button>
+            <button
+              id="sharedContextGenerateSummaryBtn"
+              type="button"
+              class="rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
+            >
+              Genera summary
+            </button>
+            <button
+              id="sharedContextClearBtn"
+              type="button"
+              class="rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-red-500/50 hover:text-red-200 hover:bg-red-500/5"
+            >
+              Svuota
+            </button>
+          </section>
+
+          <section>
+            <p class="text-[10px] font-bold text-zinc-600 uppercase tracking-widest mb-1.5">
+              Note workspace
+            </p>
+            <textarea
+              id="sharedContextInput"
+              rows="12"
+              placeholder="Scrivi qui il contesto condiviso del workspace..."
+              class="w-full min-h-[280px] resize-y bg-th-body border border-th-border-lt rounded-xl px-4 py-3 text-sm font-mono leading-6 text-th-fg outline-none focus:border-emerald-400/35"
+            ></textarea>
+          </section>
+
+          <section class="flex items-center justify-between gap-3 flex-wrap">
+            <p
+              id="sharedContextStatus"
+              class="text-xs text-zinc-500 leading-relaxed"
+            >
+              Il contesto viene salvato insieme alla sessione del workspace.
+            </p>
+            <div class="flex items-center gap-2">
+              <button
+                id="sharedContextSendActiveBtn"
+                type="button"
+                class="rounded-lg border border-zinc-700/60 px-3 py-2 text-xs font-medium text-zinc-300 transition-colors hover:border-emerald-500/50 hover:text-white hover:bg-th-hover"
+              >
+                Invia ad attiva
+              </button>
+              <button
+                id="sharedContextSendAllBtn"
+                type="button"
+                class="rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-200 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 hover:text-white"
+              >
+                Invia a tutte le AI
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <script src="../node_modules/xterm/lib/xterm.js"></script>
+    <script src="../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+    <script
+      src="../node_modules/@xterm/addon-web-links/lib/addon-web-links.js"
+    ></script>
+    <script
+      src="../node_modules/@xterm/addon-search/lib/addon-search.js"
+    ></script>
+    <script type="module" src="./renderer.js"></script>
+  </body>
+</html>

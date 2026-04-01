@@ -1,0 +1,22 @@
+export const voiceDom = {
+  voiceToolbarBadge: document.getElementById("voiceToolbarBadge"),
+  voiceToolbarText: document.getElementById("voiceToolbarText"),
+  voiceStatusBadge: document.getElementById("voiceStatusBadge"),
+  voiceStatusDot: document.getElementById("voiceStatusDot"),
+  voiceStatusLabel: document.getElementById("voiceStatusLabel"),
+  voiceStatusText: document.getElementById("voiceStatusText"),
+  voiceEnabledCheckbox: document.getElementById("voiceEnabledCheckbox"),
+  voiceConfigFields: document.getElementById("voiceConfigFields"),
+  voiceProviderSelect: document.getElementById("voiceProviderSelect"),
+  voiceLocalFields: document.getElementById("voiceLocalFields"),
+  voiceGroqFields: document.getElementById("voiceGroqFields"),
+  voiceWhisperPathInput: document.getElementById("voiceWhisperPathInput"),
+  voiceModelPathInput: document.getElementById("voiceModelPathInput"),
+  voiceGroqApiKeyInput: document.getElementById("voiceGroqApiKeyInput"),
+  voiceGroqModelSelect: document.getElementById("voiceGroqModelSelect"),
+  voiceLanguageInput: document.getElementById("voiceLanguageInput"),
+  voiceAutoSubmitCheckbox: document.getElementById("voiceAutoSubmitCheckbox"),
+  voicePickBinaryBtn: document.getElementById("voicePickBinaryBtn"),
+  voicePickModelBtn: document.getElementById("voicePickModelBtn"),
+  voiceSaveSettingsBtn: document.getElementById("voiceSaveSettingsBtn")
+};

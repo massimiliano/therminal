@@ -1,5 +1,49 @@
 /* ─── Minimal CSS (things Tailwind can't handle) ─────── */
 
+body.app-loading {
+  cursor: progress;
+}
+
+#appBootOverlay {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.22s ease, visibility 0.22s ease;
+}
+
+#appBootOverlay[data-state="ready"] {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.app-boot-overlay__backdrop {
+  background:
+    radial-gradient(circle at top, rgba(16, 185, 129, 0.18), transparent 42%),
+    linear-gradient(180deg, rgba(5, 7, 10, 0.9), rgba(10, 13, 18, 0.98));
+  backdrop-filter: blur(12px);
+}
+
+.app-boot-overlay__panel {
+  background:
+    linear-gradient(180deg, rgba(18, 24, 28, 0.96), rgba(11, 15, 19, 0.98));
+}
+
+.app-boot-overlay__spinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  border: 4px solid rgba(161, 161, 170, 0.2);
+  border-top-color: #34d399;
+  border-right-color: rgba(52, 211, 153, 0.68);
+  box-shadow: 0 0 28px rgba(52, 211, 153, 0.2);
+  animation: app-boot-overlay-spin 0.85s linear infinite;
+}
+
+@keyframes app-boot-overlay-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* kbd styling in shortcuts modal */
 kbd {
   display: inline-flex;
