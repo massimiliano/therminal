@@ -1,6 +1,8 @@
 import { state, workspaces, sessionStore } from "../state.js";
 import { dom } from "../dom.js";
-import { queueFit, refitWorkspace } from "../helpers.js";
+import { refitWorkspace } from "../helpers.js";
+import { attachSessionToHost } from "../terminal/attachment.js";
+import { fitStructuralTerminalChange } from "../terminal/resize-policy.js";
 
 export function toggleMaximize(sessionId) {
   const s = sessionStore.get(sessionId);
@@ -13,18 +15,15 @@ export function toggleMaximize(sessionId) {
 
   if (state.maximizedSessionId) restoreMaximized();
 
-  s.maxOriginalParent = s.cell.parentNode;
-  s.maxOriginalNext = s.cell.nextSibling;
-
   const ws = workspaces.get(s.workspaceId);
   if (ws) ws.element.classList.add("hidden");
 
   dom.maximizeBody.innerHTML = "";
-  dom.maximizeBody.append(s.cell);
+  attachSessionToHost(s, dom.maximizeBody, { preserveWorkspaceHost: true });
   dom.maximizeOverlay.classList.remove("hidden");
   state.maximizedSessionId = sessionId;
 
-  requestAnimationFrame(() => queueFit(sessionId));
+  requestAnimationFrame(() => fitStructuralTerminalChange(sessionId));
 }
 
 export function restoreMaximized() {
@@ -32,19 +31,12 @@ export function restoreMaximized() {
 
   const s = sessionStore.get(state.maximizedSessionId);
   if (s) {
-    if (s.maxOriginalNext) {
-      s.maxOriginalParent.insertBefore(s.cell, s.maxOriginalNext);
-    } else {
-      s.maxOriginalParent.append(s.cell);
-    }
+    attachSessionToHost(s, s.host, { preserveWorkspaceHost: true });
 
     const ws = workspaces.get(s.workspaceId);
     if (ws && state.activeView === s.workspaceId) {
       ws.element.classList.remove("hidden");
     }
-
-    delete s.maxOriginalParent;
-    delete s.maxOriginalNext;
   }
 
   dom.maximizeOverlay.classList.add("hidden");
@@ -53,8 +45,12 @@ export function restoreMaximized() {
 
   if (s) {
     const ws = workspaces.get(s.workspaceId);
-    if (ws) refitWorkspace(ws);
+    if (ws) {
+      requestAnimationFrame(() => {
+        refitWorkspace(ws, { backend: "immediate", force: true });
+      });
+    }
   } else {
-    queueFit(prevId);
+    fitStructuralTerminalChange(prevId);
   }
 }

@@ -1,11 +1,17 @@
 import { sessionStore } from "../state.js";
-import { queueFit } from "../helpers.js";
+import {
+  clearTerminalControllerSearch,
+  findNextInTerminalController,
+  findPreviousInTerminalController,
+  focusTerminalController,
+} from "../terminal/controller.js";
+import { fitStructuralTerminalChange } from "../terminal/resize-policy.js";
 
 export function showSearch(sessionId) {
-  const s = sessionStore.get(sessionId);
-  if (!s || !s.searchAddon) return;
+  const session = sessionStore.get(sessionId);
+  if (!session?.controller?.searchAddon) return;
 
-  let searchBar = s.cell.querySelector(".search-bar");
+  let searchBar = session.cell.querySelector(".search-bar");
   if (!searchBar) {
     searchBar = document.createElement("div");
     searchBar.className =
@@ -16,31 +22,31 @@ export function showSearch(sessionId) {
       <button class="search-nav-btn w-[22px] h-[22px] flex items-center justify-center bg-transparent text-zinc-500 cursor-pointer rounded text-xs transition-all duration-150 hover:text-zinc-300 hover:bg-zinc-800" data-action="next" title="Successivo (Invio)"><i class="bi bi-chevron-down"></i></button>
       <button class="search-nav-btn w-[22px] h-[22px] flex items-center justify-center bg-transparent text-zinc-500 cursor-pointer rounded text-xs transition-all duration-150 hover:text-zinc-300 hover:bg-zinc-800" data-action="close" title="Chiudi (Esc)"><i class="bi bi-x"></i></button>
     `;
-    const body = s.cell.querySelector(".terminal-cell-body");
-    s.cell.insertBefore(searchBar, body);
+    const body = session.cell.querySelector(".terminal-cell-body");
+    session.cell.insertBefore(searchBar, body);
 
     const input = searchBar.querySelector("input");
     input.addEventListener("input", () => {
-      if (input.value) s.searchAddon.findNext(input.value);
+      if (input.value) findNextInTerminalController(session.controller, input.value);
     });
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (e.shiftKey) {
-          s.searchAddon.findPrevious(input.value);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          findPreviousInTerminalController(session.controller, input.value);
         } else {
-          s.searchAddon.findNext(input.value);
+          findNextInTerminalController(session.controller, input.value);
         }
       }
-      if (e.key === "Escape") {
+      if (event.key === "Escape") {
         hideSearch(sessionId);
       }
     });
     searchBar.querySelector('[data-action="prev"]').addEventListener("click", () => {
-      s.searchAddon.findPrevious(input.value);
+      findPreviousInTerminalController(session.controller, input.value);
     });
     searchBar.querySelector('[data-action="next"]').addEventListener("click", () => {
-      s.searchAddon.findNext(input.value);
+      findNextInTerminalController(session.controller, input.value);
     });
     searchBar.querySelector('[data-action="close"]').addEventListener("click", () => {
       hideSearch(sessionId);
@@ -49,19 +55,19 @@ export function showSearch(sessionId) {
 
   searchBar.classList.remove("hidden");
   searchBar.querySelector("input").focus();
-  queueFit(sessionId);
+  fitStructuralTerminalChange(sessionId);
 }
 
 export function hideSearch(sessionId) {
-  const s = sessionStore.get(sessionId);
-  if (!s) return;
-  const searchBar = s.cell.querySelector(".search-bar");
+  const session = sessionStore.get(sessionId);
+  if (!session) return;
+
+  const searchBar = session.cell.querySelector(".search-bar");
   if (searchBar) {
     searchBar.classList.add("hidden");
-    try {
-      s.searchAddon.clearDecorations();
-    } catch {}
+    clearTerminalControllerSearch(session.controller);
   }
-  s.terminal.focus();
-  queueFit(sessionId);
+
+  focusTerminalController(session.controller);
+  fitStructuralTerminalChange(sessionId);
 }

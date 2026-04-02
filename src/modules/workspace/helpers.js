@@ -33,14 +33,49 @@ function pushBackendResize(sessionId, state) {
   window.launcherAPI.resizeSession(sessionId, cols, rows);
 }
 
+function getViewportMetrics(state) {
+  const viewport = state?.body || state?.cell;
+  return {
+    width: Math.floor(viewport?.clientWidth || 0),
+    height: Math.floor(viewport?.clientHeight || 0),
+  };
+}
+
+function scheduleTerminalRefresh(state) {
+  if (!state?.terminal || state.fitRefreshFrameId) {
+    return;
+  }
+
+  state.fitRefreshFrameId = requestAnimationFrame(() => {
+    state.fitRefreshFrameId = null;
+
+    const rows = state.terminal?.rows;
+    if (!Number.isInteger(rows) || rows <= 0) {
+      return;
+    }
+
+    try {
+      state.terminal.refresh(0, rows - 1);
+    } catch {
+      // Ignore refreshes while the terminal is tearing down.
+    }
+  });
+}
+
 export function cancelQueuedFit(sessionId) {
   const existing = scheduledFit.get(sessionId);
   if (existing) cancelAnimationFrame(existing);
   scheduledFit.delete(sessionId);
   clearBackendResize(sessionId);
+
+  const state = sessionStore.get(sessionId);
+  if (state?.fitRefreshFrameId) {
+    cancelAnimationFrame(state.fitRefreshFrameId);
+    state.fitRefreshFrameId = null;
+  }
 }
 
-export function queueFit(sessionId, { backend = "debounced" } = {}) {
+export function queueFit(sessionId, { backend = "debounced", force = false } = {}) {
   cancelQueuedFit(sessionId);
 
   const raf = requestAnimationFrame(() => {
@@ -54,10 +89,20 @@ export function queueFit(sessionId, { backend = "debounced" } = {}) {
         return;
       }
 
-      state.fitAddon.fit();
+      const { width, height } = getViewportMetrics(state);
+      if (width < 2 || height < 2) {
+        return;
+      }
 
-      if (state.terminal.rows > 0) {
-        state.terminal.refresh(0, state.terminal.rows - 1);
+      const viewportUnchanged =
+        state.lastViewportWidth === width &&
+        state.lastViewportHeight === height;
+
+      if (force || !viewportUnchanged) {
+        state.lastViewportWidth = width;
+        state.lastViewportHeight = height;
+        state.fitAddon.fit();
+        scheduleTerminalRefresh(state);
       }
 
       if (backend === "none") {

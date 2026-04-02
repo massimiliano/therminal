@@ -2,6 +2,7 @@ import { state, workspaces, sessionStore, GUTTER_PX } from "../state.js";
 import { renderTabs, switchView } from "../tabs.js";
 import { restoreMaximized } from "../maximize.js";
 import { refitWorkspace } from "../helpers.js";
+import { attachSessionToHost } from "../terminal/attachment.js";
 import {
   createClientId,
   createLeafNode,
@@ -16,6 +17,17 @@ import {
 } from "./layout-tree.js";
 
 const MIN_PANE_PX = 140;
+
+function getLayoutDomCache(workspace) {
+  if (!workspace.layoutDomCache) {
+    workspace.layoutDomCache = {
+      leaves: new Map(),
+      splits: new Map(),
+    };
+  }
+
+  return workspace.layoutDomCache;
+}
 
 function setClientPaneId(workspace, clientId, paneId) {
   const client = workspace.clients.find((entry) => entry.id === clientId);
@@ -99,7 +111,7 @@ function startSplitResize(event, workspace, splitNode, gapIndex) {
     dividerEl.classList.remove("active");
     document.body.classList.remove("layout-resizing");
     document.body.style.cursor = "";
-    refitWorkspace(workspace, { backend: "immediate" });
+    refitWorkspace(workspace, { backend: "immediate", force: true });
   }
 
   document.addEventListener("mousemove", onMove);
@@ -114,48 +126,111 @@ function createDivider(workspace, splitNode, gapIndex) {
   return divider;
 }
 
-function renderNode(workspace, node) {
-  if (node.type === "leaf") {
-    const leaf = document.createElement("div");
-    leaf.className = "workspace-leaf relative flex flex-1 h-full w-full min-h-0 min-w-0";
-    leaf.dataset.leafId = node.id;
-    leaf.dataset.clientId = node.clientId;
+function renderLeafNode(workspace, node) {
+  const cache = getLayoutDomCache(workspace);
+  let leaf = cache.leaves.get(node.id);
+  let slot = leaf?._slot || null;
 
-    const slot = document.createElement("div");
+  if (!leaf) {
+    leaf = document.createElement("div");
+    leaf.className = "workspace-leaf relative flex flex-1 h-full w-full min-h-0 min-w-0";
+
+    slot = document.createElement("div");
     slot.className = "workspace-pane-slot flex flex-1 h-full w-full min-h-0 min-w-0";
     leaf.append(slot);
-    workspace.leafHosts.set(node.clientId, slot);
-    setClientPaneId(workspace, node.clientId, node.id);
 
-    const client = workspace.clients.find((entry) => entry.id === node.clientId);
-    if (client?.sessionId) {
-      const session = sessionStore.get(client.sessionId);
-      if (session?.cell) {
-        session.host = slot;
-        slot.append(session.cell);
-      }
-    }
-
-    return leaf;
+    leaf._slot = slot;
+    cache.leaves.set(node.id, leaf);
   }
 
-  const split = document.createElement("div");
+  leaf.dataset.leafId = node.id;
+  leaf.dataset.clientId = node.clientId;
+
+  if (slot && (leaf.firstChild !== slot || leaf.childNodes.length !== 1)) {
+    leaf.replaceChildren(slot);
+  }
+
+  workspace.leafHosts.set(node.clientId, slot);
+  setClientPaneId(workspace, node.clientId, node.id);
+
+  const client = workspace.clients.find((entry) => entry.id === node.clientId);
+  if (client?.sessionId) {
+    const session = sessionStore.get(client.sessionId);
+    if (session?.cell) {
+      attachSessionToHost(session, slot);
+    }
+  }
+
+  return leaf;
+}
+
+function renderSplitNode(workspace, node) {
+  const cache = getLayoutDomCache(workspace);
+  let split = cache.splits.get(node.id);
+
+  if (!split) {
+    split = document.createElement("div");
+    cache.splits.set(node.id, split);
+  }
+
   split.className = `workspace-split flex flex-1 h-full w-full min-h-0 min-w-0 ${node.orientation === "vertical" ? "flex-row" : "flex-col"}`;
   split.dataset.splitId = node.id;
 
+  const fragment = document.createDocumentFragment();
   node.children.forEach((child, index) => {
     const wrapper = document.createElement("div");
     wrapper.className = "workspace-split-child flex flex-1 h-full w-full min-h-0 min-w-0";
     wrapper.style.flex = `${node.sizes[index] || 1} 1 0%`;
     wrapper.append(renderNode(workspace, child));
-    split.append(wrapper);
+    fragment.append(wrapper);
 
     if (index < node.children.length - 1) {
-      split.append(createDivider(workspace, node, index));
+      fragment.append(createDivider(workspace, node, index));
     }
   });
 
+  split.replaceChildren(fragment);
   return split;
+}
+
+function renderNode(workspace, node) {
+  if (node.type === "leaf") {
+    return renderLeafNode(workspace, node);
+  }
+
+  return renderSplitNode(workspace, node);
+}
+
+function pruneLayoutDomCache(workspace) {
+  const cache = getLayoutDomCache(workspace);
+  const activeLeafIds = new Set();
+  const activeSplitIds = new Set();
+
+  (function collect(node) {
+    if (!node) {
+      return;
+    }
+
+    if (node.type === "leaf") {
+      activeLeafIds.add(node.id);
+      return;
+    }
+
+    activeSplitIds.add(node.id);
+    node.children.forEach((child) => collect(child));
+  })(workspace.layout);
+
+  for (const [leafId] of cache.leaves) {
+    if (!activeLeafIds.has(leafId)) {
+      cache.leaves.delete(leafId);
+    }
+  }
+
+  for (const [splitId] of cache.splits) {
+    if (!activeSplitIds.has(splitId)) {
+      cache.splits.delete(splitId);
+    }
+  }
 }
 
 function collectDisplayOrder(workspace) {
@@ -205,8 +280,12 @@ export function renderWorkspaceLayout(workspace) {
 
   ensureWorkspaceLayout(workspace);
   workspace.leafHosts = new Map();
-  workspace.element.innerHTML = "";
-  workspace.element.append(renderNode(workspace, workspace.layout));
+
+  const nextRoot = renderNode(workspace, workspace.layout);
+  if (workspace.element.firstChild !== nextRoot || workspace.element.childNodes.length !== 1) {
+    workspace.element.replaceChildren(nextRoot);
+  }
+  pruneLayoutDomCache(workspace);
 
   if (state.activeView === workspace.id) {
     workspace.element.classList.remove("hidden");
@@ -214,7 +293,7 @@ export function renderWorkspaceLayout(workspace) {
 
   collectDisplayOrder(workspace);
   renderTabs();
-  refitWorkspace(workspace, { backend: "debounced" });
+  refitWorkspace(workspace, { backend: "immediate", force: true });
 }
 
 export function getWorkspaceHost(workspace, clientId) {

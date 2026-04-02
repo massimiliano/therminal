@@ -1,4 +1,8 @@
 import { CAPTURE_TAIL_LINES, NON_AI_PROVIDERS, WORKFLOW_TEMPLATES } from "./model.js";
+import {
+  getTerminalControllerSelection,
+  getTerminalControllerTail,
+} from "../terminal/controller.js";
 
 export function createSharedContextCaptureController({
   state,
@@ -17,27 +21,7 @@ export function createSharedContextCaptureController({
   syncSharedContextUi
 }) {
   function getSessionTail(session, maxLines = CAPTURE_TAIL_LINES) {
-    const buffer = session?.terminal?.buffer?.active;
-    if (!buffer) {
-      return "";
-    }
-
-    const start = Math.max(0, buffer.length - maxLines);
-    const lines = [];
-
-    for (let index = start; index < buffer.length; index += 1) {
-      const line = buffer.getLine(index);
-      if (!line) {
-        continue;
-      }
-
-      const text = line.translateToString().replace(/\s+$/, "");
-      if (text.trim().length > 0) {
-        lines.push(text);
-      }
-    }
-
-    return lines.join("\n").trim();
+    return getTerminalControllerTail(session?.controller, maxLines);
   }
 
   function getWorkspaceAiSessions() {
@@ -204,7 +188,7 @@ export function createSharedContextCaptureController({
       return;
     }
 
-    const selection = session.terminal?.getSelection?.().trim();
+    const selection = getTerminalControllerSelection(session.controller).trim();
     if (!selection) {
       showNotice("Nessuna selezione trovata nel terminale attivo.", { type: "warning" });
       return;

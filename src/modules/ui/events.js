@@ -16,17 +16,24 @@ import { dismissProviderAvailabilityBanner, refreshProviderCatalog } from "../pr
 import { closeNameModal, openNameModal } from "../name-modal.js";
 import { initAddTerminalMenu, openAddTerminalMenu } from "../add-terminal-menu.js";
 import { openCliOperationsModal } from "../cli-operations.js";
+import {
+  enqueueTerminalControllerOutput,
+  flushTerminalControllerOutput,
+} from "../terminal/controller.js";
+
+let windowResizeFrameId = null;
 
 export function bindIpcEvents() {
   window.launcherAPI.onSessionData((payload) => {
     const s = sessionStore.get(payload.id);
     if (!s || s.provider === "browser") return;
-    s.terminal.write(payload.data);
+    enqueueTerminalControllerOutput(s.controller, payload.data);
   });
 
   window.launcherAPI.onSessionExit((payload) => {
     const s = sessionStore.get(payload.id);
     if (!s || s.provider === "browser") return;
+    flushTerminalControllerOutput(s.controller);
 
     const exitCode = typeof payload.exitCode === "number" ? payload.exitCode : "?";
     s.info.textContent += ` (exit ${exitCode})`;
@@ -61,9 +68,16 @@ export function bindIpcEvents() {
   });
 
   window.addEventListener("resize", () => {
-    for (const id of sessionStore.keys()) {
-      queueFit(id);
+    if (windowResizeFrameId) {
+      return;
     }
+
+    windowResizeFrameId = requestAnimationFrame(() => {
+      windowResizeFrameId = null;
+      for (const id of sessionStore.keys()) {
+        queueFit(id);
+      }
+    });
   });
 }
 

@@ -5,13 +5,9 @@ import {
   providerCatalog,
   PROVIDER_STYLE,
   XTERM_THEME,
-  TerminalCtor,
-  FitAddonCtor,
-  WebLinksAddonCtor,
-  SearchAddonCtor,
 } from "../state.js";
 import { dom } from "../dom.js";
-import { shortId, queueFit, cancelQueuedFit } from "../helpers.js";
+import { shortId, cancelQueuedFit } from "../helpers.js";
 import { showSearch } from "../search.js";
 import { toggleMaximize, restoreMaximized } from "../maximize.js";
 import { showNotice } from "../notices.js";
@@ -25,19 +21,12 @@ import {
   openCliOperationsModalForSession,
   sendMessagePresetToSession
 } from "../cli-operations.js";
-
-function isPasteShortcut(event) {
-  const key = String(event.key || "").toLowerCase();
-  return (
-    ((event.ctrlKey || event.metaKey) && key === "v") ||
-    ((event.ctrlKey || event.metaKey) && event.shiftKey && key === "v") ||
-    (event.shiftKey && key === "insert")
-  );
-}
-
-function isMultilineShortcut(event) {
-  return event.key === "Enter" && event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
-}
+import {
+  createTerminalController,
+  disposeTerminalController,
+  getTerminalControllerText,
+} from "../terminal/controller.js";
+import { fitNewTerminal } from "../terminal/resize-policy.js";
 
 function updateWorkspaceClientTaskStatus(session, taskStatus) {
   const workspace = workspaces.get(session.workspaceId);
@@ -53,16 +42,7 @@ export function exportLog(sessionId) {
     return;
   }
 
-  const buffer = session.terminal.buffer.active;
-  const lines = [];
-  for (let index = 0; index < buffer.length; index += 1) {
-    const line = buffer.getLine(index);
-    if (line) {
-      lines.push(line.translateToString());
-    }
-  }
-
-  const content = lines.join("\n");
+  const content = getTerminalControllerText(session.controller);
   const filename = `therminal-${session.provider}-${shortId(sessionId)}.log`;
   window.launcherAPI.saveLogFile(filename, content);
 }
@@ -206,95 +186,13 @@ export async function createWorkspaceSession(workspace, client, host) {
   cell.append(head, body);
   host.append(cell);
 
-  const terminal = new TerminalCtor({
-    fontFamily: '"JetBrains Mono", Consolas, monospace',
+  const controller = createTerminalController({
+    sessionId: session.id,
+    cell,
+    body,
     fontSize: state.currentFontSize,
-    lineHeight: 1.25,
-    cursorBlink: true,
-    convertEol: true,
-    scrollback: 6000,
     theme: XTERM_THEME,
   });
-
-  const fitAddon = new FitAddonCtor();
-  terminal.loadAddon(fitAddon);
-
-  if (WebLinksAddonCtor) {
-    const webLinksAddon = new WebLinksAddonCtor((_event, uri) => {
-      window.launcherAPI.openExternal(uri);
-    });
-    terminal.loadAddon(webLinksAddon);
-  }
-
-  let searchAddon = null;
-  if (SearchAddonCtor) {
-    searchAddon = new SearchAddonCtor();
-    terminal.loadAddon(searchAddon);
-  }
-
-  terminal.open(body);
-  fitAddon.fit();
-  window.launcherAPI.resizeSession(session.id, terminal.cols, terminal.rows);
-  terminal.focus();
-
-  terminal.attachCustomKeyEventHandler((event) => {
-    if (event.type !== "keydown") {
-      return true;
-    }
-
-    if (isMultilineShortcut(event)) {
-      event.preventDefault();
-      window.launcherAPI.writeSession(session.id, "\n");
-      return false;
-    }
-
-    if (isPasteShortcut(event)) {
-      event.preventDefault();
-      window.launcherAPI.readClipboardText().then((text) => {
-        if (text) {
-          window.launcherAPI.writeSession(session.id, text);
-        }
-      }).catch((error) => {
-        console.error("Clipboard paste failed:", error);
-      });
-      return false;
-    }
-
-    return true;
-  });
-
-  const inputDisposable = terminal.onData((value) => {
-    window.launcherAPI.writeSession(session.id, value);
-  });
-
-  body.addEventListener("paste", (event) => {
-    const text = event.clipboardData?.getData("text/plain");
-    if (!text) {
-      return;
-    }
-    event.preventDefault();
-    window.launcherAPI.writeSession(session.id, text);
-  });
-
-  body.addEventListener("contextmenu", (event) => {
-    const selectedText = terminal.getSelection();
-    if (!selectedText) {
-      return;
-    }
-
-    event.preventDefault();
-    window.launcherAPI.writeClipboardText(selectedText).catch((error) => {
-      console.error("Clipboard copy failed:", error);
-    });
-  });
-
-  body.addEventListener("mousedown", () => {
-    terminal.focus();
-  });
-
-  const resizeObserver = new ResizeObserver(() => queueFit(session.id));
-  resizeObserver.observe(cell);
-  resizeObserver.observe(body);
 
   const sessionState = {
     id: session.id,
@@ -307,14 +205,16 @@ export async function createWorkspaceSession(workspace, client, host) {
     paneId: client.paneId,
     cell,
     host,
+    attachedHost: host,
+    body,
+    controller,
     info,
     favoritePresetsWrap,
     statusBtn,
-    terminal,
-    fitAddon,
-    searchAddon,
-    inputDisposable,
-    resizeObserver,
+    terminal: controller.terminal,
+    fitAddon: controller.fitAddon,
+    searchAddon: controller.searchAddon,
+    resizeObserver: controller.resizeObserver,
     taskStatus: normalizeTaskStatus(client.taskStatus),
   };
 
@@ -364,7 +264,7 @@ export async function createWorkspaceSession(workspace, client, host) {
     }
   });
 
-  queueFit(session.id, { backend: "immediate" });
+  fitNewTerminal(session.id);
   return sessionState;
 }
 
@@ -384,12 +284,10 @@ export function destroySession(sessionId, { notifyBackend = false, removeClient 
   }
 
   cancelQueuedFit(sessionId);
-  session.resizeObserver.disconnect();
-  session.inputDisposable.dispose();
   if (typeof session.messagePresetListener === "function") {
     document.removeEventListener("therminal:message-presets-updated", session.messagePresetListener);
   }
-  session.terminal.dispose();
+  disposeTerminalController(session.controller);
   session.cell.remove();
   sessionStore.delete(sessionId);
 

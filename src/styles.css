@@ -2498,15 +2498,11 @@ body.layout-resizing * {
 
 .xterm {
   height: 100%;
-  padding: 2px;
+  padding: 0;
 }
 
 .xterm .xterm-viewport {
   overflow-y: auto !important;
-}
-
-.xterm .xterm-screen {
-  height: 100% !important;
 }
 
 /* ─── Scrollbar ───────────────────────────────────────── */

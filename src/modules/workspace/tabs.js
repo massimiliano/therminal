@@ -209,7 +209,11 @@ export function switchView(viewId) {
     });
 
     const ws = workspaces.get(viewId);
-    if (ws) refitWorkspace(ws);
+    if (ws) {
+      requestAnimationFrame(() => {
+        refitWorkspace(ws, { backend: "immediate", force: true });
+      });
+    }
   }
 
   renderTabs();
