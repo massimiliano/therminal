@@ -16,6 +16,7 @@ import { dismissProviderAvailabilityBanner, refreshProviderCatalog } from "../pr
 import { closeNameModal, openNameModal } from "../name-modal.js";
 import { initAddTerminalMenu, openAddTerminalMenu } from "../add-terminal-menu.js";
 import { openCliOperationsModal } from "../cli-operations.js";
+import { initWorkspaceDrawer } from "./workspace-drawer.js";
 import {
   enqueueTerminalControllerOutput,
   flushTerminalControllerOutput,
@@ -82,6 +83,7 @@ export function bindIpcEvents() {
 }
 
 export function bindUiEvents() {
+  initWorkspaceDrawer();
   dom.appNoticeCloseBtn?.addEventListener("click", () => hideNotice());
   dom.providerStatusCloseBtn?.addEventListener("click", () => dismissProviderAvailabilityBanner());
 

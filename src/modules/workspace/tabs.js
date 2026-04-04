@@ -4,6 +4,7 @@ import { refitWorkspace } from "../helpers.js";
 import { syncSharedContextUi } from "../shared-context.js";
 import { openNameModal } from "../name-modal.js";
 import { showHomePage } from "../home-pages.js";
+import { closeWorkspaceDrawer } from "../ui/workspace-drawer.js";
 
 const TAB_CLS =
   "flex items-center gap-1.5 px-3 rounded-md text-xs font-medium cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px]";
@@ -187,6 +188,7 @@ export function renderTabs() {
 
 export function switchView(viewId) {
   state.activeView = viewId;
+  closeWorkspaceDrawer();
 
   const isHome = viewId === "home";
   const isWorkspaceView = !isHome;

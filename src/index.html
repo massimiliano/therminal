@@ -96,182 +96,242 @@
 
       <div class="flex-1"></div>
 
-      <div id="tabBarTools" class="flex items-center gap-1">
-        <div id="monitorWidget" class="flex items-center gap-0.5 mr-1"></div>
-        <div class="workspace-only hidden w-px h-4 bg-zinc-800 mx-0.5"></div>
-        <span
-          id="voiceToolbarBadge"
-          class="workspace-only hidden inline-flex items-center gap-1 rounded-full border border-zinc-700/60 bg-th-body px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 select-none"
-          title="Voice to text locale"
-        >
-          <i class="bi bi-mic text-[11px]"></i>
-          <span id="voiceToolbarText">Voice off</span>
-        </span>
-        <div class="workspace-only hidden w-px h-4 bg-zinc-800 mx-0.5"></div>
+      <div id="tabBarTools" class="ml-auto flex shrink-0 items-center gap-2 pl-2">
+        <div id="monitorWidget" class="flex items-center gap-1"></div>
         <button
-          id="saveSessionBtn"
-          class="workspace-only hidden flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
-          title="Salva sessione"
+          id="workspaceDrawerToggle"
+          class="flex h-[30px] w-[34px] items-center justify-center rounded-md border border-zinc-800/80 bg-th-body text-zinc-500 transition-all duration-150 hover:border-zinc-700 hover:bg-th-hover hover:text-zinc-200"
+          title="Apri strumenti"
+          aria-label="Apri strumenti"
         >
-          <i class="bi bi-save"></i>
-          <span>Salva</span>
+          <i class="bi bi-layout-sidebar-inset-reverse"></i>
         </button>
-        <div class="workspace-only hidden w-px h-4 bg-zinc-800 mx-0.5"></div>
-        <div id="addTerminalWrap" class="workspace-only hidden relative">
-          <button
-            id="addTerminalBtn"
-            class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
-            title="Aggiungi terminale al workspace"
-          >
-            <i class="bi bi-plus-square"></i>
-            <span>Aggiungi</span>
-          </button>
-          <div
-            id="addTerminalMenu"
-            class="hidden fixed z-[220] w-[240px] rounded-xl border border-th-border-lt bg-th-card p-1.5 shadow-[0_16px_48px_rgba(0,0,0,0.45)]"
-          >
-            <div class="px-2.5 pt-2 pb-1.5 border-b border-th-border-lt/80 mb-1.5">
-              <p id="addTerminalMenuTitle" class="text-[11px] font-semibold text-zinc-200">
-                Aggiungi nel workspace
+      </div>
+    </nav>
+
+    <div
+      id="workspaceDrawerBackdrop"
+      class="hidden fixed inset-0 z-[210] bg-black/30 opacity-0 transition-opacity duration-200"
+    ></div>
+
+    <aside
+      id="workspaceDrawer"
+      class="hidden fixed right-0 top-10 bottom-0 z-[211] flex w-[320px] max-w-[calc(100vw-20px)] translate-x-full flex-col border-l border-zinc-800/80 bg-th-surface/95 shadow-[-20px_0_48px_rgba(0,0,0,0.4)] backdrop-blur-xl transition-transform duration-200"
+    >
+      <div class="flex items-center justify-between border-b border-zinc-800/80 px-4 py-3">
+        <div class="min-w-0">
+          <p class="text-[10px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+            Workspace Tools
+          </p>
+          <h2 class="mt-1 text-sm font-semibold text-zinc-100">Azioni rapide</h2>
+        </div>
+        <button
+          id="workspaceDrawerCloseBtn"
+          type="button"
+          class="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-800/80 bg-th-body text-zinc-500 transition-colors hover:border-zinc-700 hover:bg-th-hover hover:text-zinc-200"
+          title="Chiudi strumenti"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-3 py-3">
+        <section
+          class="workspace-only hidden rounded-2xl border border-zinc-800/80 bg-th-body/90 p-3"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                Voice
               </p>
-              <div class="mt-2 flex items-center gap-1">
+              <p class="mt-1 text-xs text-zinc-400">Stato trascrizione rapido del workspace.</p>
+            </div>
+            <span
+              id="voiceToolbarBadge"
+              class="workspace-only hidden inline-flex items-center gap-1 rounded-full border border-zinc-700/60 bg-th-body px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 select-none"
+              title="Voice to text locale"
+            >
+              <i class="bi bi-mic text-[11px]"></i>
+              <span id="voiceToolbarText">Voice off</span>
+            </span>
+          </div>
+        </section>
+
+        <div id="workspaceTools" class="mt-3 flex flex-col gap-2">
+          <button
+            id="saveSessionBtn"
+            class="workspace-only hidden flex w-full items-center gap-3 rounded-xl border border-zinc-800/80 bg-th-body px-3 py-3 text-left text-sm font-medium text-zinc-500 transition-all duration-150 hover:border-zinc-700 hover:bg-th-hover hover:text-zinc-200"
+            title="Salva sessione"
+          >
+            <i class="bi bi-save text-base"></i>
+            <span>Salva sessione</span>
+          </button>
+
+          <div id="addTerminalWrap" class="workspace-only hidden relative">
+            <button
+              id="addTerminalBtn"
+              class="flex w-full items-center gap-3 rounded-xl border border-zinc-800/80 bg-th-body px-3 py-3 text-left text-sm font-medium text-zinc-500 transition-all duration-150 hover:border-zinc-700 hover:bg-th-hover hover:text-zinc-200"
+              title="Aggiungi terminale al workspace"
+            >
+              <i class="bi bi-plus-square text-base"></i>
+              <span>Aggiungi terminale</span>
+            </button>
+            <div
+              id="addTerminalMenu"
+              class="hidden fixed z-[220] w-[240px] rounded-xl border border-th-border-lt bg-th-card p-1.5 shadow-[0_16px_48px_rgba(0,0,0,0.45)]"
+            >
+              <div class="mb-1.5 border-b border-th-border-lt/80 px-2.5 pt-2 pb-1.5">
+                <p id="addTerminalMenuTitle" class="text-[11px] font-semibold text-zinc-200">
+                  Aggiungi nel workspace
+                </p>
+                <div class="mt-2 flex items-center gap-1">
+                  <button
+                    type="button"
+                    id="addTerminalDirVertical"
+                    class="add-terminal-dir is-active flex-1 rounded-md border border-zinc-700/60 px-2 py-1 text-[10px] font-medium text-zinc-300 transition-colors"
+                  >
+                    Split verticale
+                  </button>
+                  <button
+                    type="button"
+                    id="addTerminalDirHorizontal"
+                    class="add-terminal-dir flex-1 rounded-md border border-zinc-700/60 px-2 py-1 text-[10px] font-medium text-zinc-300 transition-colors"
+                  >
+                    Split orizzontale
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                data-provider="codex"
+                class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
+              >
+                <i class="bi bi-cpu text-blue-400"></i>
+                <span>Codex</span>
+              </button>
+              <button
+                type="button"
+                data-provider="claude"
+                class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
+              >
+                <i class="bi bi-stars text-amber-400"></i>
+                <span>Claude</span>
+              </button>
+              <button
+                type="button"
+                data-provider="gemini"
+                class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
+              >
+                <i class="bi bi-gem text-violet-400"></i>
+                <span>Gemini</span>
+              </button>
+              <button
+                type="button"
+                data-provider="terminal"
+                class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
+              >
+                <i class="bi bi-terminal text-emerald-400"></i>
+                <span>Terminale</span>
+              </button>
+              <button
+                type="button"
+                data-provider="lazygit"
+                class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
+              >
+                <i class="bi bi-git text-lime-300"></i>
+                <span>LazyGit</span>
+              </button>
+              <button
+                type="button"
+                data-provider="copilot"
+                class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
+              >
+                <i class="bi bi-github text-sky-300"></i>
+                <span>Copilot CLI</span>
+              </button>
+              <button
+                type="button"
+                data-provider="browser"
+                class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
+              >
+                <i class="bi bi-globe2 text-cyan-300"></i>
+                <span>Browser</span>
+              </button>
+            </div>
+          </div>
+
+          <button
+            id="sharedContextToggle"
+            class="workspace-only hidden flex w-full items-center gap-3 rounded-xl border border-zinc-800/80 bg-th-body px-3 py-3 text-left text-sm font-medium text-zinc-500 transition-all duration-150 hover:border-zinc-700 hover:bg-th-hover hover:text-zinc-200"
+            title="Contesto condiviso del workspace"
+          >
+            <i class="bi bi-diagram-3 text-base"></i>
+            <span>Contesto condiviso</span>
+          </button>
+
+          <button
+            id="broadcastToggle"
+            class="workspace-only hidden flex w-full items-center gap-3 rounded-xl border border-zinc-800/80 bg-th-body px-3 py-3 text-left text-sm font-medium text-zinc-500 transition-all duration-150 hover:border-zinc-700 hover:bg-th-hover hover:text-zinc-200"
+            title="Broadcast a tutti (Ctrl+Shift+B)"
+          >
+            <i class="bi bi-broadcast text-base"></i>
+            <span>Broadcast</span>
+          </button>
+
+          <button
+            id="operationsToggle"
+            class="workspace-only hidden flex w-full items-center gap-3 rounded-xl border border-zinc-800/80 bg-th-body px-3 py-3 text-left text-sm font-medium text-zinc-500 transition-all duration-150 hover:border-zinc-700 hover:bg-th-hover hover:text-zinc-200"
+            title="Operazioni CLI rapide"
+          >
+            <i class="bi bi-lightning-charge text-base"></i>
+            <span>Operazioni CLI</span>
+          </button>
+
+          <button
+            id="shortcutsToggle"
+            class="flex w-full items-center gap-3 rounded-xl border border-zinc-800/80 bg-th-body px-3 py-3 text-left text-sm font-medium text-zinc-500 transition-all duration-150 hover:border-zinc-700 hover:bg-th-hover hover:text-zinc-200"
+            title="Scorciatoie e info (Ctrl+/)"
+          >
+            <i class="bi bi-keyboard text-base"></i>
+            <span>Scorciatoie e info</span>
+          </button>
+
+          <div
+            class="workspace-only hidden rounded-2xl border border-zinc-800/80 bg-th-body/90 px-3 py-3"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                  Font
+                </p>
+                <p class="mt-1 text-xs text-zinc-400">Regola rapidamente la dimensione del terminale.</p>
+              </div>
+              <div class="flex items-center gap-1.5">
                 <button
-                  type="button"
-                  id="addTerminalDirVertical"
-                  class="add-terminal-dir is-active flex-1 rounded-md border border-zinc-700/60 px-2 py-1 text-[10px] font-medium text-zinc-300 transition-colors"
+                  id="fontMinus"
+                  class="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-800/80 bg-th-bg text-zinc-500 transition-colors hover:border-zinc-700 hover:bg-th-hover hover:text-zinc-200"
+                  title="Riduci font (Ctrl+-)"
                 >
-                  Split verticale
+                  <i class="bi bi-dash"></i>
                 </button>
-                <button
-                  type="button"
-                  id="addTerminalDirHorizontal"
-                  class="add-terminal-dir flex-1 rounded-md border border-zinc-700/60 px-2 py-1 text-[10px] font-medium text-zinc-300 transition-colors"
+                <span
+                  id="fontSizeLabel"
+                  class="w-7 text-center text-[11px] font-mono text-zinc-300 select-none"
+                  >13</span
                 >
-                  Split orizzontale
+                <button
+                  id="fontPlus"
+                  class="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-800/80 bg-th-bg text-zinc-500 transition-colors hover:border-zinc-700 hover:bg-th-hover hover:text-zinc-200"
+                  title="Aumenta font (Ctrl+=)"
+                >
+                  <i class="bi bi-plus"></i>
                 </button>
               </div>
             </div>
-            <button
-              type="button"
-              data-provider="codex"
-              class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
-            >
-              <i class="bi bi-cpu text-blue-400"></i>
-              <span>Codex</span>
-            </button>
-            <button
-              type="button"
-              data-provider="claude"
-              class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
-            >
-              <i class="bi bi-stars text-amber-400"></i>
-              <span>Claude</span>
-            </button>
-            <button
-              type="button"
-              data-provider="gemini"
-              class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
-            >
-              <i class="bi bi-gem text-violet-400"></i>
-              <span>Gemini</span>
-            </button>
-            <button
-              type="button"
-              data-provider="terminal"
-              class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
-            >
-              <i class="bi bi-terminal text-emerald-400"></i>
-              <span>Terminale</span>
-            </button>
-            <button
-              type="button"
-              data-provider="lazygit"
-              class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
-            >
-              <i class="bi bi-git text-lime-300"></i>
-              <span>LazyGit</span>
-            </button>
-            <button
-              type="button"
-              data-provider="copilot"
-              class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
-            >
-              <i class="bi bi-github text-sky-300"></i>
-              <span>Copilot CLI</span>
-            </button>
-            <button
-              type="button"
-              data-provider="browser"
-              class="add-terminal-option flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-zinc-300 transition-colors hover:bg-th-hover"
-            >
-              <i class="bi bi-globe2 text-cyan-300"></i>
-              <span>Browser</span>
-            </button>
           </div>
         </div>
-        <div class="workspace-only hidden w-px h-4 bg-zinc-800 mx-0.5"></div>
-        <button
-          id="sharedContextToggle"
-          class="workspace-only hidden flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
-          title="Contesto condiviso del workspace"
-        >
-          <i class="bi bi-diagram-3"></i>
-          <span>Contesto</span>
-        </button>
-        <div class="workspace-only hidden w-px h-4 bg-zinc-800 mx-0.5"></div>
-        <button
-          id="broadcastToggle"
-          class="workspace-only hidden flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
-          title="Broadcast a tutti (Ctrl+Shift+B)"
-        >
-          <i class="bi bi-broadcast"></i>
-          <span>Broadcast</span>
-        </button>
-        <div class="w-px h-4 bg-zinc-800 mx-0.5"></div>
-        <button
-          id="operationsToggle"
-          class="workspace-only hidden flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
-          title="Operazioni CLI rapide"
-        >
-          <i class="bi bi-lightning-charge"></i>
-          <span>Operazioni</span>
-        </button>
-        <div class="workspace-only hidden w-px h-4 bg-zinc-800 mx-0.5"></div>
-        <button
-          id="shortcutsToggle"
-          class="flex items-center gap-1.5 px-3 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
-          title="Scorciatoie e info (Ctrl+/)"
-        >
-          <i class="bi bi-keyboard"></i>
-          <span>Scorciatoie</span>
-        </button>
-        <div class="workspace-only hidden w-px h-4 bg-zinc-800 mx-0.5"></div>
-        <div class="workspace-only hidden flex items-center gap-1.5 px-2">
-          <span class="text-[10px] font-medium uppercase tracking-wide text-zinc-500 select-none">
-            Font
-          </span>
-          <button
-            id="fontMinus"
-            class="flex items-center gap-1.5 px-2 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
-            title="Riduci font (Ctrl+-)"
-          >
-            <i class="bi bi-dash"></i>
-          </button>
-          <span
-            id="fontSizeLabel"
-            class="text-[10px] text-zinc-500 font-mono w-6 text-center select-none"
-            >13</span
-          >
-          <button
-            id="fontPlus"
-            class="flex items-center gap-1.5 px-2 rounded-md text-xs font-medium text-zinc-500 cursor-pointer whitespace-nowrap transition-all duration-150 h-[30px] hover:text-zinc-300 hover:bg-th-hover"
-            title="Aumenta font (Ctrl+=)"
-          >
-            <i class="bi bi-plus"></i>
-          </button>
-        </div>
       </div>
-    </nav>
+    </aside>
 
     <div
       id="homeView"

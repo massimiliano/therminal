@@ -114,9 +114,15 @@ async function createWorkspaceFromClients({ name, clients, meta = {}, layout = n
   renderWorkspaceLayout(workspace);
 
   try {
-    for (const client of normalizedClients) {
-      await mountWorkspaceClient(workspace, client);
+    const spawnResults = await Promise.allSettled(
+      normalizedClients.map((client) => mountWorkspaceClient(workspace, client))
+    );
+    const failedSpawn = spawnResults.find((result) => result.status === "rejected");
+
+    if (failedSpawn) {
+      throw failedSpawn.reason;
     }
+
     renderWorkspaceLayout(workspace);
   } catch (error) {
     for (const client of normalizedClients) {

@@ -99,19 +99,9 @@ function renderFavoritePresetButtons(sessionId) {
 }
 
 export async function createWorkspaceSession(workspace, client, host) {
-  const payload = {
-    provider: client.provider,
-    command: client.command,
-    cwd: client.cwd,
-  };
-
-  const session = await window.launcherAPI.createSession(payload);
-  client.sessionId = session.id;
-
   const cell = document.createElement("div");
   cell.className =
     "terminal-cell relative flex h-full w-full flex-col overflow-hidden border border-th-border-lt bg-th-surface shadow-[0_10px_30px_rgba(0,0,0,0.14)] transition-shadow duration-150";
-  cell.dataset.sessionId = session.id;
   cell.dataset.clientId = client.id;
 
   const head = document.createElement("div");
@@ -124,12 +114,12 @@ export async function createWorkspaceSession(workspace, client, host) {
   grip.innerHTML = '<i class="bi bi-grip-vertical"></i>';
 
   const badge = document.createElement("span");
-  badge.className = `text-[10px] font-semibold px-2 py-px rounded uppercase tracking-wide ${PROVIDER_STYLE[session.provider]?.badge || ""}`;
-  badge.textContent = providerCatalog[session.provider]?.label || session.provider;
+  badge.className = `text-[10px] font-semibold px-2 py-px rounded uppercase tracking-wide ${PROVIDER_STYLE[client.provider]?.badge || ""}`;
+  badge.textContent = providerCatalog[client.provider]?.label || client.provider;
 
   const info = document.createElement("span");
   info.className = "text-[10px] text-zinc-500 font-mono flex-1";
-  info.textContent = "#1";
+  info.textContent = "#1 (loading...)";
 
   const favoritePresetsWrap = document.createElement("div");
   favoritePresetsWrap.className = "terminal-header-presets hidden";
@@ -183,89 +173,128 @@ export async function createWorkspaceSession(workspace, client, host) {
   const body = document.createElement("div");
   body.className = "terminal-cell-body relative flex-1 min-h-0 bg-th-body";
 
+  const loadingOverlay = document.createElement("div");
+  loadingOverlay.className = "absolute inset-0 z-[2] flex items-center justify-center bg-th-body";
+  loadingOverlay.innerHTML = `
+    <div class="flex flex-col items-center gap-2 text-zinc-500">
+      <div class="h-5 w-5 animate-spin rounded-full border-2 border-zinc-700 border-t-emerald-400"></div>
+      <p class="text-xs font-medium tracking-[0.08em] uppercase">Avvio sessione...</p>
+    </div>
+  `;
+
+  body.append(loadingOverlay);
   cell.append(head, body);
   host.append(cell);
 
-  const controller = createTerminalController({
-    sessionId: session.id,
-    cell,
-    body,
-    fontSize: state.currentFontSize,
-    theme: XTERM_THEME,
-  });
-
-  const sessionState = {
-    id: session.id,
-    provider: session.provider,
-    command: session.command,
-    cwd: session.cwd,
-    workspaceId: workspace.id,
-    clientId: client.id,
-    clientIndex: 0,
-    paneId: client.paneId,
-    cell,
-    host,
-    attachedHost: host,
-    body,
-    controller,
-    info,
-    favoritePresetsWrap,
-    statusBtn,
-    terminal: controller.terminal,
-    fitAddon: controller.fitAddon,
-    searchAddon: controller.searchAddon,
-    resizeObserver: controller.resizeObserver,
-    taskStatus: normalizeTaskStatus(client.taskStatus),
+  const payload = {
+    provider: client.provider,
+    command: client.command,
+    cwd: client.cwd,
   };
 
-  sessionStore.set(session.id, sessionState);
-  updateSessionTaskStatus(session.id, sessionState.taskStatus);
-  renderFavoritePresetButtons(session.id);
+  let session;
+  try {
+    session = await window.launcherAPI.createSession(payload);
+  } catch (error) {
+    cell.remove();
+    throw error;
+  }
 
-  const messagePresetListener = () => renderFavoritePresetButtons(session.id);
-  document.addEventListener("therminal:message-presets-updated", messagePresetListener);
-  sessionState.messagePresetListener = messagePresetListener;
+  client.sessionId = session.id;
+  cell.dataset.sessionId = session.id;
+  info.textContent = "#1";
 
-  cell.addEventListener("mousedown", () => {
-    state.focusedSessionId = session.id;
-  });
-
-  attachPaneInteractions(cell, {
-    sessionId: session.id,
-    clientId: client.id,
-    workspaceId: workspace.id,
-    splitVerticalBtn,
-    splitHorizontalBtn,
-  });
-
-  operationsBtn.addEventListener("click", () => openCliOperationsModalForSession(session.id));
-  searchBtn.addEventListener("click", () => showSearch(session.id));
-  exportBtn.addEventListener("click", () => exportLog(session.id));
-  maxBtn.addEventListener("click", () => toggleMaximize(session.id));
-  statusBtn.addEventListener("click", () => {
-    const nextStatus = getNextTaskStatus(sessionState.taskStatus);
-    updateSessionTaskStatus(session.id, nextStatus);
-    showNotice(`Task ${sessionState.clientIndex + 1}: ${getTaskStatusMeta(nextStatus).label}.`, {
-      type: "info",
-      timeoutMs: 1800,
+  try {
+    const controller = createTerminalController({
+      sessionId: session.id,
+      cell,
+      body,
+      fontSize: state.currentFontSize,
+      theme: XTERM_THEME,
     });
-  });
-  closeBtn.addEventListener("click", () => {
-    destroySession(session.id, { notifyBackend: true, removeClient: true });
-  });
-  restartBtn.addEventListener("click", async () => {
-    restartBtn.disabled = true;
-    try {
-      await restartWorkspaceSession(session.id);
-    } catch (error) {
-      console.error("Restart failed:", error);
-    } finally {
-      restartBtn.disabled = false;
-    }
-  });
 
-  fitNewTerminal(session.id);
-  return sessionState;
+    loadingOverlay.remove();
+
+    const sessionState = {
+      id: session.id,
+      provider: session.provider,
+      command: session.command,
+      cwd: session.cwd,
+      workspaceId: workspace.id,
+      clientId: client.id,
+      clientIndex: 0,
+      paneId: client.paneId,
+      cell,
+      host,
+      attachedHost: host,
+      body,
+      controller,
+      info,
+      favoritePresetsWrap,
+      statusBtn,
+      terminal: controller.terminal,
+      fitAddon: controller.fitAddon,
+      searchAddon: controller.searchAddon,
+      resizeObserver: controller.resizeObserver,
+      taskStatus: normalizeTaskStatus(client.taskStatus),
+    };
+
+    sessionStore.set(session.id, sessionState);
+    updateSessionTaskStatus(session.id, sessionState.taskStatus);
+    renderFavoritePresetButtons(session.id);
+
+    const messagePresetListener = () => renderFavoritePresetButtons(session.id);
+    document.addEventListener("therminal:message-presets-updated", messagePresetListener);
+    sessionState.messagePresetListener = messagePresetListener;
+
+    cell.addEventListener("mousedown", () => {
+      state.focusedSessionId = session.id;
+    });
+
+    attachPaneInteractions(cell, {
+      sessionId: session.id,
+      clientId: client.id,
+      workspaceId: workspace.id,
+      splitVerticalBtn,
+      splitHorizontalBtn,
+    });
+
+    operationsBtn.addEventListener("click", () => openCliOperationsModalForSession(session.id));
+    searchBtn.addEventListener("click", () => showSearch(session.id));
+    exportBtn.addEventListener("click", () => exportLog(session.id));
+    maxBtn.addEventListener("click", () => toggleMaximize(session.id));
+    statusBtn.addEventListener("click", () => {
+      const nextStatus = getNextTaskStatus(sessionState.taskStatus);
+      updateSessionTaskStatus(session.id, nextStatus);
+      showNotice(`Task ${sessionState.clientIndex + 1}: ${getTaskStatusMeta(nextStatus).label}.`, {
+        type: "info",
+        timeoutMs: 1800,
+      });
+    });
+    closeBtn.addEventListener("click", () => {
+      destroySession(session.id, { notifyBackend: true, removeClient: true });
+    });
+    restartBtn.addEventListener("click", async () => {
+      restartBtn.disabled = true;
+      try {
+        await restartWorkspaceSession(session.id);
+      } catch (error) {
+        console.error("Restart failed:", error);
+      } finally {
+        restartBtn.disabled = false;
+      }
+    });
+
+    fitNewTerminal(session.id);
+    return sessionState;
+  } catch (error) {
+    client.sessionId = null;
+    cell.remove();
+    try {
+      window.launcherAPI.closeSession(session.id);
+    } catch {}
+    throw error;
+  }
 }
 
 export function destroySession(sessionId, { notifyBackend = false, removeClient = false } = {}) {

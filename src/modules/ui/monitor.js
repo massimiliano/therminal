@@ -5,27 +5,20 @@ let metricsPending = false;
 
 function createBar(label, icon) {
   const wrap = document.createElement("div");
-  wrap.className = "flex items-center gap-1.5 px-1.5";
+  wrap.className =
+    "flex h-[28px] items-center gap-1.5 rounded-lg border border-zinc-800/80 bg-th-body px-2";
   wrap.title = label;
 
   const ico = document.createElement("i");
-  ico.className = `bi ${icon} text-[10px] text-zinc-600`;
-
-  const barBg = document.createElement("div");
-  barBg.className = "w-[40px] h-[5px] rounded-full bg-zinc-800 overflow-hidden";
-
-  const barFill = document.createElement("div");
-  barFill.className = "h-full rounded-full transition-all duration-500";
-  barFill.style.width = "0%";
+  ico.className = `bi ${icon} text-[11px] text-zinc-500`;
 
   const pct = document.createElement("span");
-  pct.className = "text-[10px] font-mono text-zinc-600 w-[28px] text-right select-none";
+  pct.className = "min-w-[30px] text-[10px] font-mono text-zinc-400 text-right select-none";
   pct.textContent = "0%";
 
-  barBg.append(barFill);
-  wrap.append(ico, barBg, pct);
+  wrap.append(ico, pct);
 
-  return { el: wrap, fill: barFill, pct };
+  return { el: wrap, pct };
 }
 
 function barColor(percent) {
@@ -50,15 +43,13 @@ export function initMonitor() {
     try {
       const m = await window.launcherAPI.getSystemMetrics();
 
-      cpu.fill.style.width = `${m.cpuPercent}%`;
-      cpu.fill.className = `h-full rounded-full transition-all duration-500 ${barColor(m.cpuPercent)}`;
       cpu.pct.textContent = `${m.cpuPercent}%`;
+      cpu.pct.className = `min-w-[30px] text-[10px] font-mono text-right select-none ${barColor(m.cpuPercent).replace("bg-", "text-")}`;
       cpu.el.title = `CPU: ${m.cpuPercent}%`;
 
-      ram.fill.style.width = `${m.memUsedPercent}%`;
-      ram.fill.className =
-        `h-full rounded-full transition-all duration-500 ${barColor(m.memUsedPercent)}`;
       ram.pct.textContent = `${m.memUsedPercent}%`;
+      ram.pct.className =
+        `min-w-[30px] text-[10px] font-mono text-right select-none ${barColor(m.memUsedPercent).replace("bg-", "text-")}`;
       ram.el.title = `RAM: ${m.memUsedGB} / ${m.memTotalGB} GB (${m.memUsedPercent}%)`;
     } catch {
       // Ignore monitor update failures.
