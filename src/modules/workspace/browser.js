@@ -99,39 +99,40 @@ export function createBrowserPanel(workspace, client, host) {
 
   const grip = document.createElement("span");
   grip.className =
-    "cell-grip flex items-center text-sm text-zinc-600 transition-colors duration-150 cursor-grab shrink-0 hover:text-zinc-300 active:cursor-grabbing";
+    "terminal-cell-grip cell-grip flex items-center text-sm text-zinc-600 transition-colors duration-150 cursor-grab shrink-0 hover:text-zinc-300 active:cursor-grabbing";
   grip.innerHTML = '<i class="bi bi-grip-vertical"></i>';
 
   const badge = document.createElement("span");
-  badge.className = `text-[10px] font-semibold px-2 py-px rounded uppercase tracking-wide ${PROVIDER_STYLE.browser?.badge || "bg-cyan-500/15 text-cyan-300"}`;
+  badge.className = `terminal-cell-badge text-[10px] font-semibold px-2 py-px rounded uppercase tracking-wide ${PROVIDER_STYLE.browser?.badge || "bg-cyan-500/15 text-cyan-300"}`;
   badge.textContent = "Browser";
 
   const info = document.createElement("span");
-  info.className = "text-[10px] text-zinc-500 font-mono flex-1";
+  info.className = "terminal-cell-info text-[10px] text-zinc-500 font-mono flex-1";
   info.textContent = "#1";
 
   const statusBtn = document.createElement("button");
   statusBtn.type = "button";
+  statusBtn.className = "terminal-status-btn";
 
   const actions = document.createElement("div");
-  actions.className = "flex items-center gap-0.5";
+  actions.className = "terminal-cell-actions flex items-center gap-0.5";
 
   const btnCls =
-    "w-[24px] h-[24px] flex items-center justify-center bg-transparent text-zinc-600 cursor-pointer rounded text-xs transition-all duration-150 hover:text-zinc-100 hover:bg-zinc-800/80";
+    "terminal-header-action w-[24px] h-[24px] flex items-center justify-center bg-transparent text-zinc-600 cursor-pointer rounded text-xs transition-all duration-150 hover:text-zinc-100 hover:bg-zinc-800/80";
 
   const splitVerticalBtn = createHeaderActionButton(
-    `${btnCls} pane-split-action`,
+    `${btnCls} pane-split-action terminal-action-primary`,
     "Split verticale",
     '<span class="text-[9px] font-semibold tracking-wide">V</span>'
   );
   const splitHorizontalBtn = createHeaderActionButton(
-    `${btnCls} pane-split-action`,
+    `${btnCls} pane-split-action terminal-action-primary`,
     "Split orizzontale",
     '<span class="text-[9px] font-semibold tracking-wide">H</span>'
   );
-  const maxBtn = createHeaderActionButton(btnCls, "Massimizza", '<i class="bi bi-arrows-fullscreen"></i>');
+  const maxBtn = createHeaderActionButton(`${btnCls} terminal-action-primary`, "Massimizza", '<i class="bi bi-arrows-fullscreen"></i>');
   const closeBtn = createHeaderActionButton(
-    `${btnCls} hover:!text-red-400 hover:!bg-red-500/10`,
+    `${btnCls} terminal-action-primary hover:!text-red-400 hover:!bg-red-500/10`,
     "Chiudi",
     '<i class="bi bi-x-lg"></i>'
   );

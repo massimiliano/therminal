@@ -60,7 +60,7 @@ export function updateSessionTaskStatus(sessionId, nextStatus) {
 
   if (session.statusBtn) {
     session.statusBtn.className =
-      `inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] transition-colors ${meta.chip}`;
+      `terminal-status-btn inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] transition-colors ${meta.chip}`;
     session.statusBtn.innerHTML = `<span class="inline-block w-1.5 h-1.5 rounded-full ${meta.dot}"></span>${meta.shortLabel}`;
     session.statusBtn.title = `Task status: ${meta.label}`;
   }
@@ -110,15 +110,15 @@ export async function createWorkspaceSession(workspace, client, host) {
 
   const grip = document.createElement("span");
   grip.className =
-    "cell-grip flex items-center text-sm text-zinc-600 transition-colors duration-150 cursor-grab shrink-0 hover:text-zinc-300 active:cursor-grabbing";
+    "terminal-cell-grip cell-grip flex items-center text-sm text-zinc-600 transition-colors duration-150 cursor-grab shrink-0 hover:text-zinc-300 active:cursor-grabbing";
   grip.innerHTML = '<i class="bi bi-grip-vertical"></i>';
 
   const badge = document.createElement("span");
-  badge.className = `text-[10px] font-semibold px-2 py-px rounded uppercase tracking-wide ${PROVIDER_STYLE[client.provider]?.badge || ""}`;
+  badge.className = `terminal-cell-badge text-[10px] font-semibold px-2 py-px rounded uppercase tracking-wide ${PROVIDER_STYLE[client.provider]?.badge || ""}`;
   badge.textContent = providerCatalog[client.provider]?.label || client.provider;
 
   const info = document.createElement("span");
-  info.className = "text-[10px] text-zinc-500 font-mono flex-1";
+  info.className = "terminal-cell-info text-[10px] text-zinc-500 font-mono flex-1";
   info.textContent = "#1 (loading...)";
 
   const favoritePresetsWrap = document.createElement("div");
@@ -126,34 +126,35 @@ export async function createWorkspaceSession(workspace, client, host) {
 
   const statusBtn = document.createElement("button");
   statusBtn.type = "button";
+  statusBtn.className = "terminal-status-btn";
 
   const actions = document.createElement("div");
-  actions.className = "flex items-center gap-0.5";
+  actions.className = "terminal-cell-actions flex items-center gap-0.5";
 
   const btnCls =
-    "w-[24px] h-[24px] flex items-center justify-center bg-transparent text-zinc-600 cursor-pointer rounded text-xs transition-all duration-150 hover:text-zinc-100 hover:bg-zinc-800/80";
+    "terminal-header-action w-[24px] h-[24px] flex items-center justify-center bg-transparent text-zinc-600 cursor-pointer rounded text-xs transition-all duration-150 hover:text-zinc-100 hover:bg-zinc-800/80";
 
   const splitVerticalBtn = createHeaderActionButton(
-    `${btnCls} pane-split-action`,
+    `${btnCls} pane-split-action terminal-action-primary`,
     "Split verticale",
     '<span class="text-[9px] font-semibold tracking-wide">V</span>'
   );
   const splitHorizontalBtn = createHeaderActionButton(
-    `${btnCls} pane-split-action`,
+    `${btnCls} pane-split-action terminal-action-primary`,
     "Split orizzontale",
     '<span class="text-[9px] font-semibold tracking-wide">H</span>'
   );
   const operationsBtn = createHeaderActionButton(
-    btnCls,
+    `${btnCls} terminal-action-secondary`,
     "Operazioni CLI",
     '<i class="bi bi-lightning-charge"></i>'
   );
-  const searchBtn = createHeaderActionButton(btnCls, "Cerca", '<i class="bi bi-search"></i>');
-  const exportBtn = createHeaderActionButton(btnCls, "Esporta log", '<i class="bi bi-download"></i>');
-  const maxBtn = createHeaderActionButton(btnCls, "Massimizza", '<i class="bi bi-arrows-fullscreen"></i>');
-  const restartBtn = createHeaderActionButton(btnCls, "Riavvia", '<i class="bi bi-arrow-clockwise"></i>');
+  const searchBtn = createHeaderActionButton(`${btnCls} terminal-action-secondary`, "Cerca", '<i class="bi bi-search"></i>');
+  const exportBtn = createHeaderActionButton(`${btnCls} terminal-action-secondary`, "Esporta log", '<i class="bi bi-download"></i>');
+  const maxBtn = createHeaderActionButton(`${btnCls} terminal-action-primary`, "Massimizza", '<i class="bi bi-arrows-fullscreen"></i>');
+  const restartBtn = createHeaderActionButton(`${btnCls} terminal-action-secondary`, "Riavvia", '<i class="bi bi-arrow-clockwise"></i>');
   const closeBtn = createHeaderActionButton(
-    `${btnCls} hover:!text-red-400 hover:!bg-red-500/10`,
+    `${btnCls} terminal-action-primary hover:!text-red-400 hover:!bg-red-500/10`,
     "Chiudi",
     '<i class="bi bi-x-lg"></i>'
   );

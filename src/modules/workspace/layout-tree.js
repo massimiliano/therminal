@@ -104,6 +104,23 @@ function buildBalancedLayout(clientIds, depth = 0) {
   );
 }
 
+export function buildUniformLayout(clientIds, orientation = "vertical") {
+  if (!Array.isArray(clientIds) || clientIds.length === 0) {
+    return null;
+  }
+
+  if (clientIds.length === 1) {
+    return createLeafNode(clientIds[0]);
+  }
+
+  const normalizedOrientation = orientation === "horizontal" ? "horizontal" : "vertical";
+  return createSplitNode(
+    normalizedOrientation,
+    clientIds.map((clientId) => createLeafNode(clientId)),
+    new Array(clientIds.length).fill(1)
+  );
+}
+
 function sanitizeLayoutNode(node, validClientIds, usedClientIds) {
   if (!node || typeof node !== "object") {
     return null;

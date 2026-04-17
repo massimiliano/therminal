@@ -100,6 +100,31 @@ kbd {
   border-bottom-color: #7f1d1d40;
 }
 
+.terminal-cell-head {
+  min-width: 0;
+}
+
+.terminal-cell-badge,
+.terminal-cell-info,
+.terminal-status-btn,
+.terminal-cell-actions {
+  min-width: 0;
+}
+
+.terminal-cell-info {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-cell-actions {
+  flex-shrink: 0;
+}
+
+.terminal-header-action {
+  flex-shrink: 0;
+}
+
 .terminal-header-presets {
   display: flex;
   align-items: center;
@@ -134,6 +159,84 @@ kbd {
   border-color: rgba(251, 191, 36, 0.48);
   background: linear-gradient(180deg, rgba(245, 158, 11, 0.22), rgba(120, 53, 15, 0.2));
   color: #fff7ed;
+}
+
+.terminal-cell[data-header-mode="compact"] .terminal-cell-head {
+  gap: 4px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.terminal-cell[data-header-mode="compact"] .terminal-cell-grip,
+.terminal-cell[data-header-mode="compact"] .terminal-header-presets {
+  display: none;
+}
+
+.terminal-cell[data-header-mode="compact"] .terminal-cell-badge {
+  padding-left: 7px;
+  padding-right: 7px;
+  font-size: 9px;
+}
+
+.terminal-cell[data-header-mode="compact"] .terminal-cell-info {
+  font-size: 9px;
+}
+
+.terminal-cell[data-header-mode="compact"] .terminal-status-btn {
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+  font-size: 8px !important;
+}
+
+.terminal-cell[data-header-mode="compact"] .terminal-action-secondary {
+  display: none;
+}
+
+.terminal-cell[data-header-mode="stacked"] .terminal-cell-head {
+  flex-wrap: wrap;
+  align-items: center;
+  height: auto;
+  min-height: 38px;
+  row-gap: 4px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.terminal-cell[data-header-mode="stacked"] .terminal-cell-grip,
+.terminal-cell[data-header-mode="stacked"] .terminal-header-presets {
+  display: none;
+}
+
+.terminal-cell[data-header-mode="stacked"] .terminal-cell-badge {
+  padding-left: 7px;
+  padding-right: 7px;
+  font-size: 9px;
+}
+
+.terminal-cell[data-header-mode="stacked"] .terminal-cell-info {
+  flex: 1 1 64px;
+  font-size: 9px;
+}
+
+.terminal-cell[data-header-mode="stacked"] .terminal-status-btn {
+  margin-left: auto;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+  font-size: 8px !important;
+}
+
+.terminal-cell[data-header-mode="stacked"] .terminal-cell-actions {
+  order: 10;
+  width: 100%;
+  justify-content: flex-end;
+  padding-top: 4px;
+  border-top: 1px solid rgba(63, 63, 70, 0.55);
+}
+
+.terminal-cell[data-header-mode="stacked"] .terminal-action-secondary {
+  display: none;
 }
 
 .message-preset-shell {

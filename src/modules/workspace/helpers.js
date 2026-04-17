@@ -41,6 +41,24 @@ function getViewportMetrics(state) {
   };
 }
 
+function syncHeaderDensity(state, width) {
+  const cell = state?.cell;
+  if (!cell) {
+    return;
+  }
+
+  let nextMode = "full";
+  if (width <= 280) {
+    nextMode = "stacked";
+  } else if (width <= 420) {
+    nextMode = "compact";
+  }
+
+  if (cell.dataset.headerMode !== nextMode) {
+    cell.dataset.headerMode = nextMode;
+  }
+}
+
 function scheduleTerminalRefresh(state) {
   if (!state?.terminal || state.fitRefreshFrameId) {
     return;
@@ -85,11 +103,13 @@ export function queueFit(sessionId, { backend = "debounced", force = false } = {
 
     try {
       if (typeof state.onFit === "function" && !state.fitAddon) {
+        syncHeaderDensity(state, Math.floor(state?.cell?.clientWidth || 0));
         state.onFit();
         return;
       }
 
       const { width, height } = getViewportMetrics(state);
+      syncHeaderDensity(state, Math.floor(state?.cell?.clientWidth || width));
       if (width < 2 || height < 2) {
         return;
       }

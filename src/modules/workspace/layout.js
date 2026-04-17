@@ -6,6 +6,7 @@ import { attachSessionToHost } from "../terminal/attachment.js";
 import {
   createClientId,
   createLeafNode,
+  buildUniformLayout,
   ensureWorkspaceLayout,
   listLeafClientIds,
   normalizeSplitSizes,
@@ -253,6 +254,21 @@ function collectDisplayOrder(workspace) {
 }
 
 export { createClientId, normalizeWorkspaceLayout };
+
+export function rebuildWorkspaceLayout(workspace, orientation = "vertical") {
+  if (!workspace) {
+    return null;
+  }
+
+  const normalizedOrientation = orientation === "horizontal" ? "horizontal" : "vertical";
+  const normalizedLayout = normalizeWorkspaceLayout(workspace.layout, workspace.clients);
+  const orderedClientIds = normalizedLayout
+    ? listLeafClientIds(normalizedLayout)
+    : workspace.clients.map((client) => client.id);
+
+  workspace.layout = buildUniformLayout(orderedClientIds, normalizedOrientation);
+  return workspace.layout;
+}
 
 export function renderWorkspaceLayout(workspace) {
   if (!workspace) {

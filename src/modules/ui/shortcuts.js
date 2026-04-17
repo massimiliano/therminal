@@ -1,11 +1,12 @@
 import { dom } from "../dom.js";
 import { toggleBroadcast } from "../broadcast.js";
-import { providerCatalog } from "../state.js";
+import { providerCatalog, state } from "../state.js";
 import { buildStep2 } from "../wizard.js";
 import { loadPresets } from "../presets.js";
 import { loadSessionsUI } from "../session-state.js";
 import { showNotice } from "../notices.js";
 import { refreshProviderCatalog } from "../providers.js";
+import { setWorkspaceLayoutOrientation } from "../workspace.js";
 import {
   DEFAULT_SHORTCUTS,
   SHORTCUT_ACTIONS,
@@ -67,6 +68,25 @@ function updateShortcutTitles() {
   if (dom.broadcastToggle) {
     dom.broadcastToggle.title = `Broadcast a tutti i terminali (${formatShortcutLabel(getShortcutValue("toggleBroadcast"))})`;
   }
+}
+
+function applyUniformLayoutShortcut(orientation) {
+  if (!state.activeView || state.activeView === "home") {
+    return false;
+  }
+
+  const layout = setWorkspaceLayoutOrientation(state.activeView, orientation);
+  if (!layout) {
+    return false;
+  }
+
+  showNotice(
+    orientation === "horizontal"
+      ? "Workspace ridisposto in orizzontale."
+      : "Workspace ridisposto in verticale.",
+    { type: "success", timeoutMs: 2200 }
+  );
+  return true;
 }
 
 function renderShortcutKbd(shortcut) {
@@ -340,6 +360,24 @@ export function bindKeyboardShortcuts() {
         }
         event.preventDefault();
         toggleBroadcast();
+        return;
+      }
+
+      if (shortcutMatchesEvent(event, getShortcutValue("stackAllVertical"))) {
+        if (isEditableTarget(event.target)) {
+          return;
+        }
+        event.preventDefault();
+        applyUniformLayoutShortcut("vertical");
+        return;
+      }
+
+      if (shortcutMatchesEvent(event, getShortcutValue("stackAllHorizontal"))) {
+        if (isEditableTarget(event.target)) {
+          return;
+        }
+        event.preventDefault();
+        applyUniformLayoutShortcut("horizontal");
         return;
       }
 

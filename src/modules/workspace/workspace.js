@@ -5,6 +5,7 @@ import {
   createClientId,
   getWorkspaceHost,
   normalizeWorkspaceLayout,
+  rebuildWorkspaceLayout,
   renderWorkspaceLayout,
 } from "../layout.js";
 import { createWorkspaceSession, destroySession } from "../session.js";
@@ -240,6 +241,31 @@ export async function launchWorkspaceFromConfig(config) {
     showNotice(error?.message || "Impossibile ripristinare il workspace.", { type: "error" });
     return null;
   }
+}
+
+export function setWorkspaceLayoutOrientation(workspaceOrId, orientation = "vertical") {
+  const workspace =
+    typeof workspaceOrId === "string" ? workspaces.get(workspaceOrId) : workspaceOrId;
+
+  if (!workspace) {
+    showNotice("Apri prima un workspace per ridisporre i terminali.", {
+      type: "warning",
+      timeoutMs: 2200
+    });
+    return null;
+  }
+
+  if (workspace.clients.length < 2) {
+    showNotice("Servono almeno 2 terminali per applicare questo layout.", {
+      type: "warning",
+      timeoutMs: 2200
+    });
+    return null;
+  }
+
+  rebuildWorkspaceLayout(workspace, orientation);
+  renderWorkspaceLayout(workspace);
+  return workspace.layout;
 }
 
 export async function addTerminalToActiveWorkspace(provider, options = {}) {

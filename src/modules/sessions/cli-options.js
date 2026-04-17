@@ -30,7 +30,7 @@ const CODEX_OPTIONS = [
 const CLAUDE_OPTIONS = [
   {
     key: "model",
-    values: ["claude-sonnet-4-6", "claude-opus-4-6", "claude-opus-4-6[1m]", "claude-sonnet-4-6[1m]"],
+    values: ["claude-sonnet-4-6", "claude-opus-4-6", "claude-opus-4-6[1m]", "claude-sonnet-4-6[1m]", "claude-opus-4-7"],
   },
   { key: "effort", values: ["max", "high", "medium", "low"] },
   { key: "dangerously-skip-permissions", values: [], valueHint: "flag"  },

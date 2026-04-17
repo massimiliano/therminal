@@ -4,7 +4,9 @@ export const DEFAULT_SHORTCUTS = Object.freeze({
   toggleWindow: "CommandOrControl+`",
   toggleShortcuts: "CommandOrControl+/",
   toggleBroadcast: "CommandOrControl+Shift+B",
-  pushToTalk: "Shift+Alt+Z"
+  pushToTalk: "Shift+Alt+Z",
+  stackAllVertical: "CommandOrControl+Alt+Shift+V",
+  stackAllHorizontal: "CommandOrControl+Alt+Shift+H"
 });
 
 export const SHORTCUT_ACTIONS = Object.freeze([
@@ -27,6 +29,16 @@ export const SHORTCUT_ACTIONS = Object.freeze([
     id: "pushToTalk",
     label: "Push-to-talk",
     description: "Dettatura voice nella sessione attiva"
+  },
+  {
+    id: "stackAllVertical",
+    label: "Tutti verticali",
+    description: "Ridispone il workspace attivo in colonne verticali"
+  },
+  {
+    id: "stackAllHorizontal",
+    label: "Tutti orizzontali",
+    description: "Ridispone il workspace attivo in righe orizzontali"
   }
 ]);
 

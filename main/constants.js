@@ -29,7 +29,9 @@ const DEFAULT_SHORTCUTS = Object.freeze({
   toggleWindow: "CommandOrControl+`",
   toggleShortcuts: "CommandOrControl+/",
   toggleBroadcast: "CommandOrControl+Shift+B",
-  pushToTalk: "Shift+Alt+Z"
+  pushToTalk: "Shift+Alt+Z",
+  stackAllVertical: "CommandOrControl+Alt+Shift+V",
+  stackAllHorizontal: "CommandOrControl+Alt+Shift+H"
 });
 
 const MAX_FAVORITE_MESSAGE_PRESETS = 5;
