@@ -11,7 +11,8 @@
     "dev": "electron .",
     "build:html": "node scripts/build-index-html.mjs",
     "rebuild-pty": "electron-rebuild -f -w node-pty",
-    "build": "npm run build:html && electron-builder --win"
+    "build": "npm run build:html && electron-builder --win",
+    "build:linux": "npm run build:html && electron-builder --linux"
   },
   "build": {
     "appId": "com.therminal.app",
@@ -43,6 +44,12 @@
       "installerIcon": "logo.ico",
       "uninstallerIcon": "logo.ico",
       "installerHeaderIcon": "logo.ico"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "logo.png",
+      "category": "Utility",
+      "maintainer": "therminal-linux-fork"
     }
   },
   "dependencies": {

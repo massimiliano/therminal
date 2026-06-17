@@ -1,6 +1,6 @@
 # Therminal
 
-Launcher desktop Windows per orchestrare piu sessioni CLI e pannelli di lavoro da un'unica interfaccia Electron.
+Launcher desktop (Windows e Linux) per orchestrare piu sessioni CLI e pannelli di lavoro da un'unica interfaccia Electron.
 
 Therminal unisce terminali embedded con `xterm.js`, layout workspace ridimensionabili, preset, sessioni salvate, stato servizi, usage panel, voice-to-text e strumenti di handoff per lavorare in parallelo con `Claude`, `Codex`, `Gemini`, terminali classici, `LazyGit` e browser embedded.
 
@@ -138,17 +138,23 @@ Therminal puo trascrivere voce nella sessione attiva con push-to-talk.
 
 ## Requisiti
 
-### Per usare l'app da installer `.exe`
+### Per usare l'app da installer `.exe` (Windows)
 
 - Windows 10 o Windows 11
 - i CLI che vuoi usare realmente installati nel `PATH`
 
+### Per usare l'app da AppImage (Linux)
+
+- Distribuzione Linux x64 con supporto FUSE (la maggior parte delle distro moderne)
+- i CLI che vuoi usare realmente installati nel `PATH`
+
 ### Per sviluppo locale
 
-- Windows 10 o Windows 11
+- Windows 10/11, Linux o macOS
 - Node.js LTS
 - npm
-- Visual Studio Build Tools se devi ricompilare `node-pty`
+- Visual Studio Build Tools se devi ricompilare `node-pty` su Windows
+- `build-essential` e `python3` se devi ricompilare `node-pty` su Linux
 
 ## Avvio rapido
 
@@ -247,6 +253,12 @@ Per generare il pacchetto Windows NSIS:
 
 ```bash
 npm run build
+```
+
+Per generare l'AppImage Linux:
+
+```bash
+npm run build:linux
 ```
 
 L'output viene scritto in `dist/`.
